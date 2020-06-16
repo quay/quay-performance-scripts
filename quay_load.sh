@@ -10,12 +10,24 @@ token=$2
 url=$1
 version="/api/v1"
 org=test
+password=password
+target_num=1000
+concurrent_users=100
 
 # create_user <user>
 create_user() {
   path="/superuser/users/"
-  data={\"email\":\"$1@test.com\",\"username\":\"$1\"}
+  data={\"email\":\"$1@test.com\",\"username\":\"$1\",\"password\":\"password\"}
   curl -H "Content-Type: application/json" -k -X POST -d $data -H "Authorization: Bearer $token" ${url}${version}${path}
+  update_password $1
+}
+
+# update_password <user>
+# default password: password
+update_password() {
+  path="/superuser/users/$1"
+  data={\"password\":\"$password\"}
+  curl -H "Content-Type: application/json" -k -X PUT -d $data -H "Authorization: Bearer $token" ${url}${version}${path}
 }
 
 # create_team <team>
@@ -46,8 +58,24 @@ create_repo() {
   curl -H "Content-Type: application/json" -k -X POST -d $data -H "Authorization: Bearer $token" ${url}${version}${path}
 }
 
-create_team test_team6
-create_user test_user6
-create_repo test_repo6
-add_user_to_team test_team6 test_user6
-add_team_to_repo test_repo6 test_team6
+# gen_account <num> <prefix_for_assets>
+# Builds the accounts and creates associations.
+gen_account(){
+    prefix=$2
+    create_team ${prefix}_team_$1
+    create_user ${prefix}_user_$1
+    create_repo ${prefix}_repo_$1
+    add_user_to_team ${prefix}_team_$1 ${prefix}_user_$1
+    add_team_to_repo ${prefix}_repo_$1 ${prefix}_team_$1
+}
+
+count=1
+for iter in $(seq 1 $target_num); do
+    if [[ $count -lt $concurrent_users ]]; then
+        gen_account $iter perf-test &
+        ((count=count+1))
+    else
+        sleep 60
+        count=1
+    fi
+done
