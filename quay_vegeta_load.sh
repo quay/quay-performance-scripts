@@ -13,7 +13,7 @@ org=test
 password=password
 target_num=100
 rate=10
-prefix=perftest
+prefix=ptest
 
 # create_user count
 create_user() {
@@ -39,7 +39,7 @@ create_team() {
   path=/organization/test/team/${prefix}_team_
   URL=${url}${version}${path}
   echo "+-----------------------+ Generating Teams +-----------------------+"
-  /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "POST", url: ("'${URL}'"+(.|tostring)), body: {name: ("'${prefix}'_team_" + (.|tostring)),role:member}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure | ./vegeta report
+  /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "PUT", url: ("'${URL}'"+(.|tostring)), body: {name: ("'${prefix}'_team_" + (.|tostring)),role:"member"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure | ./vegeta report
   echo "+---------------------+ End Generating Teams +---------------------+"
 }
 
@@ -64,19 +64,7 @@ add_team_to_repo() {
   curl -H "Content-Type: application/json" -k -X PUT -d $data -H "Authorization: Bearer $token" ${url}${version}${path}
 }
 
-
-
-#create_user 100
-#update_password 100
+create_user 100
+update_password 100
 create_team 100
 
-#count=1
-#for iter in $(seq 1 $target_num); do
-#    if [[ $count -lt $concurrent_users ]]; then
-#        gen_account $iter perf-test &
-#        ((count=count+1))
-#    else
-#        sleep 60
-#        count=1
-#    fi
-#done
