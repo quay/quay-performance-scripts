@@ -43,11 +43,13 @@ create_team() {
   echo "+---------------------+ End Generating Teams +---------------------+"
 }
 
-# create_repo <repo_name>
+# create_repo count
 create_repo() {
   path="/repository"
-  data={\"description\":\"$1\",\"repo_kind\":\"image\",\"namespace\":\"${org}\",\"repository\":\"$1\",\"visibility\":\"public\"}
-  curl -H "Content-Type: application/json" -k -X POST -d $data -H "Authorization: Bearer $token" ${url}${version}${path}
+  URL=${url}${version}${path}
+  echo "+-----------------------+ Generating Repos +-----------------------+"
+  /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "POST", url: "'${URL}'", body: {description:"test",repo_kind:"image",namespace:"'$org'",repository: ("'${prefix}'_repo_" + (.|tostring)),visibility:"public"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure | ./vegeta report
+  echo "+---------------------+ End Generating Repos +---------------------+"
 }
 
 # add_user_to_team <team> <user>
@@ -64,7 +66,7 @@ add_team_to_repo() {
   curl -H "Content-Type: application/json" -k -X PUT -d $data -H "Authorization: Bearer $token" ${url}${version}${path}
 }
 
-create_user 100
-update_password 100
-create_team 100
-
+create_user $target_num
+update_password $target_num
+create_team $target_num
+create_repo $target_num
