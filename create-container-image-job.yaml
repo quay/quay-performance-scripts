@@ -1,0 +1,33 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: load-container-image
+spec:
+  parallelism: 100
+  completions: 100
+  template:
+    spec:
+      containers:
+      - command:
+        - /scripts/build-script.sh
+        env:
+        - name: QUAY_URL
+          value: rook-quay-quay-openshift-quay.apps.rook43quay.perf-testing.devcluster.openshift.com
+        image: quay.io/podman/stable
+        imagePullPolicy: Always
+        name: load
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /scripts
+          name: load-script
+      serviceAccount: builder
+      serviceAccountName: builder
+      volumes:
+      - configMap:
+          defaultMode: 484
+          name: load-script
+        name: load-script
+      restartPolicy: Never
+
