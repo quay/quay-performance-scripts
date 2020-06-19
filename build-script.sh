@@ -1,34 +1,31 @@
-#!/usr/bin/bash
-set -x
+#!/usr/bin/bash -u
 
-organization=test
 prefix=perf-test
-num_users=1000
-num_tags=100
+user_prefix=perf-test
+num_users=${NUM_USERS:-500}
+num_images=${NUM_IMAGES:-100}
+num_tags=${NUM_TAGS:-10}
+quay=${QUAY_URL}
+token=${TOKEN}
+pick=$((1 + RANDOM % ${num_users}))
 
-pick=$((1 + RANDOM % 1000))
-quay=$QUAY_URL
 
-cat > /tmp/Dockerfile <<EOF
-FROM registry.access.redhat.com/ubi8:latest
+user=${prefix}_user_${pick}
 
-RUN mkdir -pv /tmp/test
-RUN echo "hello" > /tmp/test/hello.out
-EOF
+echo "Logging with user ${user}"
+podman login ${quay} --tls-verify=false -u ${user} -p password
+for i in `seq 1 ${num_images}`; do
+  image=${quay}/${user}/${prefix}_${RANDOM}-${i}
+  touch file${i}
+  echo -e "FROM scratch\nCOPY file${i} myfile" | podman build  -f - . -t ${image}:latest
+  rm file${i}
+  for tag in `seq 1 ${num_tags}`; do
+    podman tag ${image}:latest ${image}:tag${tag}
+    echo Pushing ${image}:tag${tag}
+    start=$(date +%s)
+    podman push --tls-verify=false ${image}:tag${tag}
+    echo $(($(date +%s) - ${start})) >> push-performance.log
+  done
+done
 
-podman login ${quay} --tls-verify=false -u ${prefix}_user_${pick} -p password
-podman build --layers --force-rm --tag ${quay}/${organization}/${prefix}_repo_${pick} -f /tmp/Dockerfile
-podman push ${quay}/${organization}/${prefix}_repo_${pick} --tls-verify=false
-
-if [[ $num_tags -gt 0 ]]; then
-    for iter in $(seq 1 $num_tags); do
-        cat > /tmp/Dockerfile_$iter <<EOF
-FROM registry.access.redhat.com/ubi8:latest
-
-RUN mkdir -pv /tmp/test
-RUN echo "hello $iter" > /tmp/test/hello.out
-EOF
-        podman build --layers --force-rm --tag ${quay}/${organization}/${prefix}_repo_${pick}:test_$iter -f /tmp/Dockerfile_$iter
-	podman push ${quay}/${organization}/${prefix}_repo_${pick}:test_$iter --tls-verify=false
-    done
-fi
+cat push-performance.log
