@@ -3,9 +3,10 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: load-container-image
+  namespace: quay-perf
 spec:
-  parallelism: 100
-  completions: 100
+  parallelism: ${PARALLELISM}
+  completions: ${POD_COUNT}
   template:
     spec:
       containers:
@@ -13,7 +14,15 @@ spec:
         - /scripts/build-script.sh
         env:
         - name: QUAY_URL
-          value: rook-quay-quay-openshift-quay.apps.rook43quay.perf-testing.devcluster.openshift.com
+          value: ${QUAY_URL}
+        - name: TOKEN
+          value: "${TOKEN}"
+        - name: NUM_USERS
+          value: "${NUM_USERS}"
+        - name: NUM_IMAGES
+          value: "${NUM_IMAGES}"
+        - name: NUM_TAGS
+          value: "${NUM_TAGS}"
         image: quay.io/podman/stable
         imagePullPolicy: Always
         name: load
@@ -22,8 +31,6 @@ spec:
         volumeMounts:
         - mountPath: /scripts
           name: load-script
-      serviceAccount: builder
-      serviceAccountName: builder
       volumes:
       - configMap:
           defaultMode: 484
