@@ -1,31 +1,41 @@
 #!/usr/bin/bash -u
-
+organization=test
 prefix=perf-test
-user_prefix=perf-test
 num_users=${NUM_USERS:-500}
-num_images=${NUM_IMAGES:-100}
 num_tags=${NUM_TAGS:-10}
 quay=${QUAY_URL}
 token=${TOKEN}
+
 pick=$((1 + RANDOM % ${num_users}))
+quay=$QUAY_URL
 
+cat > /tmp/Dockerfile <<EOF
+FROM quay.io/jitesoft/alpine:latest
 
-user=${prefix}_user_${pick}
+RUN echo "hello" > hello.out
+EOF
 
-echo "Logging with user ${user}"
-podman login ${quay} --tls-verify=false -u ${user} -p password
-for i in `seq 1 ${num_images}`; do
-  image=${quay}/${user}/${prefix}_${RANDOM}-${i}
-  touch file${i}
-  echo -e "FROM scratch\nCOPY file${i} myfile" | podman build  -f - . -t ${image}:latest
-  rm file${i}
-  for tag in `seq 1 ${num_tags}`; do
-    podman tag ${image}:latest ${image}:tag${tag}
-    echo Pushing ${image}:tag${tag}
-    start=$(date +%s)
-    podman push --tls-verify=false ${image}:tag${tag}
-    echo $(($(date +%s) - ${start})) >> push-performance.log
-  done
-done
+cd /tmp
+podman login ${quay} --tls-verify=false -u ${prefix}_user_${pick} -p password --tmpdir /tmp --root /tmp
+podman build --layers --force-rm --tag ${pick} -f /tmp/Dockerfile
 
-cat push-performance.log
+echo Pushing image
+start=$(date +%s)
+podman push --tls-verify=false ${pick} ${quay}/${organization}/${prefix}_repo_${pick}
+echo Init : $(($(date +%s) - ${start})) >> /tmp/push-performance.log
+
+if [[ $num_tags -gt 0 ]]; then
+    for iter in $(seq 1 $num_tags); do
+        cat > /tmp/Dockerfile <<EOF
+FROM quay.io/jitesoft/alpine:latest
+
+RUN echo "hello $iter" > hello.out
+EOF
+        podman build --layers --force-rm --tag $iter -f /tmp/Dockerfile
+        start=$(date +%s)
+        podman push --log-level=debug --tls-verify=false $iter ${quay}/${organization}/${prefix}_repo_${pick}:test_$iter
+        echo Tag : $(($(date +%s) - ${start})) >> /tmp/push-performance.log
+    done
+fi
+
+cat /tmp/push-performance.log

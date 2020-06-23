@@ -2,6 +2,16 @@
 ## Assumptions
 The Quay Operator has been deployed.
 
+## Additionall Tooling
+This script assumes the Vegeta binary is colocated with the scripts.
+
+To install Vegeta simply
+
+```
+$ wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8.3-linux-amd64.tar.gz
+$ tar -xzf vegeta-12.8.3-linux-amd64.tar.gz
+```
+
 ## Database
 The database provided here is a dump from psql with a token generated for organization `test`
 

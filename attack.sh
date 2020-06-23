@@ -4,11 +4,10 @@ set -u
 
 export TOKEN=<Token>
 export QUAY_URL=<URL>
-export PARALLELISM=200
-export POD_COUNT=200
-export NUM_USERS=500
-export NUM_IMAGES=100
-export NUM_TAGS=10
+export PARALLELISM=10
+export POD_COUNT=100
+export NUM_USERS=1000
+export NUM_TAGS=100
 
 kubectl create ns quay-perf
 kubectl delete cm load-script -n quay-perf --ignore-not-found

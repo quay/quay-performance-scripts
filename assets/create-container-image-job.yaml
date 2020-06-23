@@ -19,8 +19,6 @@ spec:
           value: "${TOKEN}"
         - name: NUM_USERS
           value: "${NUM_USERS}"
-        - name: NUM_IMAGES
-          value: "${NUM_IMAGES}"
         - name: NUM_TAGS
           value: "${NUM_TAGS}"
         image: quay.io/podman/stable
