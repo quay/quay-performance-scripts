@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: load-container-image
+  name: run-vegeta
   namespace: quay-perf
 spec:
   parallelism: ${PARALLELISM}
@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - command:
-        - /scripts/targeted-build-script.sh
+        - /scripts/run-script.sh
         env:
         - name: QUAY_URL
           value: ${QUAY_URL}
@@ -19,18 +19,20 @@ spec:
           value: "${TOKEN}"
         - name: NUM_USERS
           value: "${NUM_USERS}"
-        image: quay.io/podman/stable
+        - name: NUM_TAGS
+          value: "${NUM_TAGS}"
+        image: quay.io/cloud-bulldozer/vegeta:latest
         imagePullPolicy: Always
         name: load
         securityContext:
           privileged: true
         volumeMounts:
         - mountPath: /scripts
-          name: load-script
+          name: run-script
       volumes:
       - configMap:
           defaultMode: 484
-          name: load-script
-        name: load-script
+          name: run-script
+        name: run-script
       restartPolicy: Never
 
