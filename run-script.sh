@@ -12,6 +12,9 @@ token_10=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2
 token_100=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_100_tags:pull,push" | jq '.token' | sed -e 's/"//g')
 token_500=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_500_tags:pull,push" | jq '.token' | sed -e 's/"//g')
 token_1000=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_1000_tags:pull,push" | jq '.token' | sed -e 's/"//g')
+token_10000=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_10000_tags:pull,push" | jq '.token' | sed -e 's/"//g')
+token_100000=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_100000_tags:pull,push" | jq '.token' | sed -e 's/"//g')
+
 
 # Catalog
 echo "+-----------------------+ v2 _catalog +-----------------------+"
@@ -42,3 +45,15 @@ echo "+-----------------------+ v2 repo with 1000 tag +-----------------------+"
 URL=https://${quay}/v2/${prefix}_user_${pick}/repo_1000_tags/tags/list
 echo "GET $URL" | ./vegeta attack -rate $rate -duration ${duration}s -insecure -header "Authorization: Bearer $token_1000" | ./vegeta report
 echo "+---------------------+ End v2 repo with 1000 tag +---------------------+"
+
+# List Tags 10000_tags
+echo "+-----------------------+ v2 repo with 10000 tag +-----------------------+"
+URL=https://${quay}/v2/${prefix}_user_${pick}/repo_10000_tags/tags/list
+echo "GET $URL" | ./vegeta attack -rate $rate -duration ${duration}s -insecure -header "Authorization: Bearer $token_10000" | ./vegeta report
+echo "+---------------------+ End v2 repo with 10000 tag +---------------------+"
+
+# List Tags 100000_tags
+echo "+-----------------------+ v2 repo with 100000 tag +-----------------------+"
+URL=https://${quay}/v2/${prefix}_user_${pick}/repo_100000_tags/tags/list
+echo "GET $URL" | ./vegeta attack -rate $rate -duration ${duration}s -insecure -header "Authorization: Bearer $token_100000" | ./vegeta report
+echo "+---------------------+ End v2 repo with 100000 tag +---------------------+"
