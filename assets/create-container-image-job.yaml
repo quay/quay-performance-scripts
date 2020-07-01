@@ -2,16 +2,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: load-container-image
+  name: load-container-image-${USER}
   namespace: quay-perf
 spec:
-  parallelism: ${PARALLELISM}
-  completions: ${POD_COUNT}
+  parallelism: 1
+  completions: 1
   template:
     spec:
       containers:
       - command:
         - /scripts/targeted-build-script.sh
+        args:
+        - "${USER}"
         env:
         - name: QUAY_URL
           value: ${QUAY_URL}
@@ -19,7 +21,9 @@ spec:
           value: "${TOKEN}"
         - name: NUM_USERS
           value: "${NUM_USERS}"
-        image: quay.io/podman/stable
+        - name: PREFIX
+          value: "${PREFIX}"
+        image: quay.io/openshift-scale/scale-ci-workload:master
         imagePullPolicy: Always
         name: load
         securityContext:
