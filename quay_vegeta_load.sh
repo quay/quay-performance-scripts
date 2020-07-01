@@ -35,7 +35,7 @@ update_password() {
 
 # create_team count
 create_team() {
-  path=/organization/test/team/${prefix}_team_
+  path=/organization/${org}/team/${prefix}_team_
   URL=${url}${version}${path}
   echo "+-----------------------+ Generating Teams +-----------------------+"
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "PUT", url: ("'${URL}'"+(.|tostring)), body: {name: ("'${prefix}'_team_" + (.|tostring)),role:"member"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure | ./vegeta report | tee create_team-performance.log
