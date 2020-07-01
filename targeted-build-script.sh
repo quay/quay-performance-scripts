@@ -53,7 +53,6 @@ for repo in $repos; do
       start=$(date +%s)
       curl -k --data @/tmp/repo_$tag.json -L -X PUT -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/${tag}" -H "Content-Type: application/json"
       echo Tag : $(($(date +%s) - ${start})) >> /tmp/push-performance.log
-      sleep 2
     done
 
   fi
