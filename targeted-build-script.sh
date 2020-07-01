@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-prefix=rook-test
+prefix=${PREFIX:-perf-test}
 num_tags=${NUM_TAGS:-10}
 num_repo=${NUM_REPO:-10}
 quay=${QUAY_URL}
