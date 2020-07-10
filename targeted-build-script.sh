@@ -42,11 +42,14 @@ for repo in $repos; do
   num_tags=$(echo ${repo} | awk -F_ '{print $1}')
 
   if [[ $num_tags -gt 0 ]]; then
-    echo "Capture Token"
-    target_token=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_${repo}:pull,push" | jq '.token' | sed -e 's/"//g')
-    curl -k -L -X GET -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/latest" > /tmp/repo_manifest_${pick}_1
 
     for iter in $(seq 1 $num_tags); do
+      echo ""
+      echo " Capture Token "
+      echo " Run ${repo} - Iteration ${iter}"
+      echo ""
+      target_token=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_${repo}:pull,push" | jq '.token' | sed -e 's/"//g')
+      curl -k -L -X GET -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/latest" > /tmp/repo_manifest_${pick}_1
       tag=$(dbus-uuidgen)
       content=$(jq '.tag="'"${tag}"'"' /tmp/repo_manifest_${pick}_1)
       echo $content > /tmp/repo_$tag.json
