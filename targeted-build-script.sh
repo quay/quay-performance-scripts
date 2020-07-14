@@ -5,15 +5,28 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
+function create_tag() {
+  repo=$1
+  echo ""
+  echo " Capture Token "
+  echo " Run ${repo} - Iteration ${iter}"
+  echo ""
+  tag=$(dbus-uuidgen)
+  target_token=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_${repo}:pull,push" | jq '.token' | sed -e 's/"//g')
+  curl -k -L -X GET -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/latest" > /tmp/repo_manifest_${pick}_1_$tag
+  content=$(jq '.tag="'"${tag}"'"' /tmp/repo_manifest_${pick}_1_$tag)
+  echo $content > /tmp/repo_$tag.json
+  start=$(date +%s)
+  curl -k --data @/tmp/repo_$tag.json -L -X PUT -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/${tag}" -H "Content-Type: application/json"
+  echo Tag : $(($(date +%s) - ${start})) >> /tmp/push-performance.log
+}
+
 prefix=${PREFIX:-perf-test}
-num_tags=${NUM_TAGS:-10}
-num_repo=${NUM_REPO:-10}
 quay=${QUAY_URL}
-
 repos="10_tags 100_tags 500_tags 1000_tags 10000_tags 100000_tags"
-
 pick=$1
 quay=$QUAY_URL
+max_concurrent=20
 
 cat > /tmp/Dockerfile <<EOF
 FROM quay.io/jitesoft/alpine:latest
@@ -42,23 +55,22 @@ for repo in $repos; do
   num_tags=$(echo ${repo} | awk -F_ '{print $1}')
 
   if [[ $num_tags -gt 0 ]]; then
-
+    count=0
+    echo $count
+    echo $max_concurrent
     for iter in $(seq 1 $num_tags); do
-      echo ""
-      echo " Capture Token "
-      echo " Run ${repo} - Iteration ${iter}"
-      echo ""
-      target_token=$(curl -k -L --user ${prefix}_user_${pick}:password "https://${quay}/v2/auth?service=${quay}&scope=repository:${prefix}_user_${pick}/repo_${repo}:pull,push" | jq '.token' | sed -e 's/"//g')
-      curl -k -L -X GET -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/latest" > /tmp/repo_manifest_${pick}_1
-      tag=$(dbus-uuidgen)
-      content=$(jq '.tag="'"${tag}"'"' /tmp/repo_manifest_${pick}_1)
-      echo $content > /tmp/repo_$tag.json
-      start=$(date +%s)
-      curl -k --data @/tmp/repo_$tag.json -L -X PUT -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/${tag}" -H "Content-Type: application/json"
-      echo Tag : $(($(date +%s) - ${start})) >> /tmp/push-performance.log
+      if [[ $count -gt $max_concurrent ]] ; then
+        sleep 5
+        count=0
+      else
+       create_tag $repo &
+       echo "Running ${count}"
+       count=$((count+1))
+      fi
     done
 
   fi
 done
 
 cat /tmp/push-performance.log
+
