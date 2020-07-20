@@ -23,7 +23,7 @@ function create_tag() {
 
 prefix=${PREFIX:-perf-test}
 quay=${QUAY_URL}
-repos="10_tags 100_tags 500_tags 1000_tags 10000_tags 100000_tags"
+repos="10_tags 100_tags 500_tags 1000_tags 10000_tags"
 pick=$1
 quay=$QUAY_URL
 max_concurrent=20
