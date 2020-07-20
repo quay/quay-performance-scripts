@@ -34,7 +34,7 @@ create_user() {
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "POST", url: "'$URL'", body: {email: ("'${prefix}'_user_" + (.|tostring) +"@test.com"),username: ("'${prefix}'_user_" + (.|tostring))}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure > create_user-performance-${uuid}-result.log
   cat create_user-performance-${uuid}-result.log | ./vegeta report
   cat create_user-performance-${uuid}-result.log | ./vegeta report --every=1s --type=json --output=vegeta-create_user-performance-${uuid}-result.json
-  $snafu -t vegeta -r vegeta-create_user-performance-${uuid}-result.json -u ${uuid} --target_name ${URL} -w ${rate}
+  $snafu -t vegeta -r vegeta-create_user-performance-${uuid}-result.json -u ${uuid} --target_name ${path} -w ${rate}
   echo "+---------------------+ End Generating Users +---------------------+"
 }
 
@@ -47,7 +47,7 @@ update_password() {
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "PUT", url: ("'${URL}'"+(.|tostring)), body: {password:"'$password'"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure > update_password-performance-${uuid}-result.log
   cat update_password-performance-${uuid}-result.log | ./vegeta report
   cat update_password-performance-${uuid}-result.log | ./vegeta report --every=1s --type=json --output=vegeta-update_password-performance-${uuid}-result.json
-  $snafu -t vegeta -r vegeta-update_password-performance-${uuid}-result.json -u ${uuid} --target_name ${URL} -w ${rate}
+  $snafu -t vegeta -r vegeta-update_password-performance-${uuid}-result.json -u ${uuid} --target_name ${path} -w ${rate}
   echo "+---------------------+ End Update Passwords +---------------------+"
 }
 
@@ -59,7 +59,7 @@ create_team() {
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "PUT", url: ("'${URL}'"+(.|tostring)), body: {name: ("'${prefix}'_team_" + (.|tostring)),role:"member"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure > create_team-performance-${uuid}-result.log
   cat create_team-performance-${uuid}-result.log | ./vegeta report
   cat create_team-performance-${uuid}-result.log | ./vegeta report --every=1s --type=json --output=vegeta-create_team-performance-${uuid}-result.json
-  $snafu -t vegeta -r vegeta-create_team-performance-${uuid}-result.json -u ${uuid} --target_name ${URL} -w ${rate}
+  $snafu -t vegeta -r vegeta-create_team-performance-${uuid}-result.json -u ${uuid} --target_name ${path} -w ${rate}
   echo "+---------------------+ End Generating Teams +---------------------+"
 }
 
@@ -71,7 +71,7 @@ create_repo() {
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "POST", url: "'${URL}'", body: {description:"test",repo_kind:"image",namespace:"'$org'",repository: ("'${prefix}'_repo_" + (.|tostring)),visibility:"public"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure > create_repo-performance-${uuid}-result.log
   cat create_repo-performance-${uuid}-result.log | ./vegeta report
   cat create_repo-performance-${uuid}-result.log | ./vegeta report --every=1s --type=json --output=vegeta-create_repo-performance-${uuid}-result.json
-  $snafu -t vegeta -r vegeta-create_repo-performance-${uuid}-result.json -u ${uuid} --target_name ${URL} -w ${rate}
+  $snafu -t vegeta -r vegeta-create_repo-performance-${uuid}-result.json -u ${uuid} --target_name ${path} -w ${rate}
   echo "+---------------------+ End Generating Repos +---------------------+"
 }
 
@@ -83,7 +83,7 @@ add_user_to_team() {
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "PUT", url: ("'${URL}''${prefix}'_team_"+(.|tostring)+"/members/'${prefix}'_user_"+(.|tostring)), body: {}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure > add_user_to_repo-performance-${uuid}-result.log
   cat add_user_to_repo-performance-${uuid}-result.log | ./vegeta report
   cat add_user_to_repo-performance-${uuid}-result.log | ./vegeta report --every=1s --type=json --output=vegeta-add_user_to_repo-performance-${uuid}-result.json
-  $snafu -t vegeta -r vegeta-add_user_to_repo-performance-${uuid}-result.json -u ${uuid} --target_name ${URL} -w ${rate}
+  $snafu -t vegeta -r vegeta-add_user_to_repo-performance-${uuid}-result.json -u ${uuid} --target_name ${path} -w ${rate}
   echo "+---------------------+ End Linking User to Team +---------------------+"
 }
 
@@ -95,7 +95,7 @@ add_team_to_repo() {
   /usr/bin/jq  --arg token $token -ncM '.=1 | while(. < '${1}'; .+1 ) | {method: "PUT", url: ("'${URL}''${prefix}'_repo_"+(.|tostring)+"/permissions/team/'${prefix}'_team_"+(.|tostring)), body: {role:"admin"}| @base64, "header":{"Authorization": ["Bearer " + $token], "Content-Type":["application/json"]}}' | ./vegeta attack -lazy -format=json -rate $rate -insecure > add_team_to_repo-performance-${uuid}-result.log
   cat add_team_to_repo-performance-${uuid}-result.log | ./vegeta report
   cat add_team_to_repo-performance-${uuid}-result.log | ./vegeta report --every=1s --type=json --output=vegeta-add_user_to_repo-performance-${uuid}-result.json
-  $snafu -t vegeta -r vegeta-add_user_to_repo-performance-${uuid}-result.json -u ${uuid} --target_name ${URL} -w ${rate}
+  $snafu -t vegeta -r vegeta-add_user_to_repo-performance-${uuid}-result.json -u ${uuid} --target_name ${path} -w ${rate}
   echo "+---------------------+ End Linking Repo to Team +---------------------+"
 }
 
