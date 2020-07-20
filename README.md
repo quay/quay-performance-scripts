@@ -54,6 +54,12 @@ quay_version=3		# Version of Quay.
 
 Once those values are updated, execute the `quay_vegeta_load.sh` script. Passing the quay URL and the superuser application token.
 
+Example execution:
+
+```
+$ root@ip-172-31-66-66: ~/quay_perf # time ./quay_vegeta_load.sh https://quay-testing.cluster.dev <api-key>
+```
+
 ### Load Quay with repos and tags : attack_load.sh ->  targeted-build-script.sh
 
 Variables to edit or review
