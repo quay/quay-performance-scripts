@@ -7,24 +7,31 @@ fi
 
 token=$2
 url=$1
+
+# API Version
 version="/api/v1"
-org=test
-password=password
-target_num=1000
-rate=50
-prefix=joetaleric-test
 uuid=$(uuidgen)
-elastic=search-cloud-perf-lqrf3jjtaqo7727m7ynd2xyt4y.us-west-2.es.amazonaws.com
-es_port=80
+
+# Vars for test
+org=${ORG:-test}
+password=${PASSWORD:-password}
+target_num=${TARGET:-1000}
+rate=${RATE:-50}
+prefix=${PREFIX:-perf-test}
+elastic=${ES:-search-cloud-perf-lqrf3jjtaqo7727m7ynd2xyt4y.us-west-2.es.amazonaws.com}
+es_port=${ES_PORT:-80}
+db=${DB:-mysql57}
+test_name=${TEST:-performance_test}
+quay_version=${QUAY_VERSION:-3}
+
+# Python Wrapper for wrokloads
 snafu="python3.6 /root/snafu/run_snafu.py"
-db=mysql57
-quay_version=3
 
 # Elasticsearch params
 export es=$elastic
 export es_port=$es_port
 export es_index=ripsaw-vegeta
-export clustername=quay${quay_version}_${db}
+export clustername=quay${quay_version}_${db}_${test_name}
 
 # create_user count
 create_user() {
