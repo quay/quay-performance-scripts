@@ -4,7 +4,6 @@ set -u
 
 export QUAY_URL=<URL>
 export PARALLELISM=10
-export POD_COUNT=10
 export NUM_USERS=1000
 export RATE=10
 
