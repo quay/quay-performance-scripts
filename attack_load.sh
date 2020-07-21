@@ -3,7 +3,7 @@
 set -u
 
 export QUAY_URL=<URL>
-export PREFIX=pref-test
+export PREFIX=perf-test
 export PARALLELISM=1
 export NUM_USERS=1
 export CONCURRENT_JOBS=10
