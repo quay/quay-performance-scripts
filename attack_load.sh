@@ -2,12 +2,12 @@
 
 set -u
 
-export TOKEN=<TOKEN>
 export QUAY_URL=<URL>
 export PREFIX=pref-test
 export PARALLELISM=1
 export POD_COUNT=1
 export NUM_USERS=1
+export CONCURRENT_JOBS=10
 
 kubectl delete ns quay-perf
 kubectl create ns quay-perf
