@@ -71,10 +71,11 @@ $ root@ip-172-31-66-66: ~/quay_perf # time ./quay_vegeta_load.sh https://quay-te
 
 Variables to edit or review
 ```
-export QUAY_URL=<URL>	# Remove https, simply pass the URL without https
-export PREFIX=pref-test # Prefix used above to create the accounts
-export PARALLELISM=1    # How many concurrent jobs to run?
-export NUM_USERS=1	# How many users to load up
+export QUAY_URL=<URL>		# Remove https, simply pass the URL without https
+export PREFIX=pref-test 	# Prefix used above to create the accounts
+export PARALLELISM=1    	# How many concurrent jobs to run?
+export NUM_USERS=1		# How many users to load up
+export CONCURRENT_JOBS=10	# How many tags to generate at once in each job
 ```
 
 Script that will create 5 repos by default, each with different amount of tags:

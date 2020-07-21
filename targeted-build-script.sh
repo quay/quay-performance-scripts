@@ -22,11 +22,11 @@ function create_tag() {
 }
 
 prefix=${PREFIX:-perf-test}
+max_concurrent=${CONCURRENT_JOBS:-20}
 quay=${QUAY_URL}
 repos="10_tags 100_tags 500_tags 1000_tags 10000_tags"
 pick=$1
 quay=$QUAY_URL
-max_concurrent=20
 
 cat > /tmp/Dockerfile <<EOF
 FROM quay.io/jitesoft/alpine:latest

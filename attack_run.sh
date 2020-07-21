@@ -2,7 +2,6 @@
 
 set -u
 
-export TOKEN=<TOKEN>
 export QUAY_URL=<URL>
 export PARALLELISM=10
 export POD_COUNT=10
