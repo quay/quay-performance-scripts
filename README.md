@@ -41,15 +41,22 @@ The `attack_load.sh` and `attack_run.sh` assume we have K8s infrastucture to run
 Variables to edit or review
 
 ```
-org=test 		# In the creation of the superuser/application you create an origanization which the application lives under.
-password=password 	# password we should update the user accounts with
-target_num=1000 	# Number of accounts to create
-rate=50			# Rate of creation
-prefix=perf-test	# What to prefix to use for the accounts ie perf-test_user_XX
-elastic=es-server	# Elasticsearch server to send latency data
-es_port=80		# Elasticserach port, usual 9200
-db=mysql57		# What was the backend database
-quay_version=3		# Version of Quay.
+org=${ORG:-test}			# In the creation of the superuser/application you create an origanization which the application lives under.
+password=${PASSWORD:-password}		# password we should update the user accounts with
+target_num=${TARGET:-1000}		# Number of accounts to create
+rate=${RATE:-50}			# Rate of creation
+prefix=${PREFIX:-perf-test}		# What to prefix to use for the accounts ie perf-test_user_XX
+elastic=${ES:-es-server} 		# Elasticsearch server to send latency data
+es_port=${ES_PORT:-80}			# Elasticserach port, usual 9200
+db=${DB:-mysql57}			# What was the backend database
+test_name=${TEST:-performance_test}	# Describe the test or the env
+quay_version=${QUAY_VERSION:-3}		# Version of quay
+```
+
+Either you can modify the variables in the script or simply set them with :
+
+```
+export ORG=test
 ```
 
 Once those values are updated, execute the `quay_vegeta_load.sh` script. Passing the quay URL and the superuser application token.
