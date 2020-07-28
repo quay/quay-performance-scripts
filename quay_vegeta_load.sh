@@ -22,7 +22,7 @@ elastic=${ES:-search-cloud-perf-lqrf3jjtaqo7727m7ynd2xyt4y.us-west-2.es.amazonaw
 es_port=${ES_PORT:-80}
 db=${DB:-mysql57}
 test_name=${TEST:-performance_test}
-quay_version=${QUAY_VERSION:-3}
+quay_version=${QUAY_VERSION:-3.3.0}
 
 # Python Wrapper for wrokloads
 snafu="python3.6 /root/snafu/run_snafu.py"

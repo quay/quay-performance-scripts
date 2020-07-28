@@ -15,12 +15,26 @@ spec:
         env:
         - name: QUAY_URL
           value: ${QUAY_URL}
-        - name: TOKEN
-          value: "${TOKEN}"
         - name: NUM_USERS
           value: "${NUM_USERS}"
         - name: NUM_TAGS
           value: "${NUM_TAGS}"
+        - name: UUID
+          value: "${UUID}"
+        - name: RATE
+          value: "${RATE}"
+        - name: DURATION
+          value: "${DURATION}"
+        - name: ES
+          value: "${ES}"
+        - name: DB
+          value: "${DB}"
+        - name: TEST_NAME
+          value: "${TEST_NAME}"
+        - name: QUAY_VERSION
+          value: "${QUAY_VERSION}"
+        - name: ES_PORT
+          value: "${ES_PORT}"
         image: quay.io/cloud-bulldozer/vegeta:latest
         imagePullPolicy: Always
         name: load
