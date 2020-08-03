@@ -14,6 +14,22 @@ $ tar -xzf vegeta-12.8.3-linux-amd64.tar.gz
 
 This will drop in an binary which we will execute with the scripts.
 
+### Install SNAFU on the node running quay_vegeta_load.sh
+
+git clone the snafu repo
+
+```
+ $ git clone https://github.com/cloud-bulldozer/snafu
+```
+
+Note: You must have at least python3.6 installed.
+
+After you have copied the repo, install the python application.
+
+```
+ $ python3.6 setup.py develop
+```
+
 
 ## Workflow
 Once Quay has been deployed and the superuser/application token has been generated the performance workloads can be ran.
