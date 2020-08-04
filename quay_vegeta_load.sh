@@ -8,6 +8,10 @@ fi
 token=$2
 url=$1
 
+# Load the venv
+venv_path=${VENV:-/tmp/quay_venv}
+source $venv_path/bin/activate
+
 # API Version
 version="/api/v1"
 uuid=$(uuidgen)
