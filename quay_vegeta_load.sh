@@ -25,7 +25,7 @@ test_name=${TEST:-performance_test}
 quay_version=${QUAY_VERSION:-3.3.0}
 
 # Python Wrapper for wrokloads
-snafu="python3.6 /root/snafu/run_snafu.py"
+snafu="run_snafu"
 
 # Elasticsearch params
 export es=$elastic
