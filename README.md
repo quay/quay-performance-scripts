@@ -5,7 +5,15 @@ The Quay Operator has been deployed.
 ## Additionall Tooling
 This script assumes the Vegeta binary is colocated with the scripts.
 
-### To install Vegeta simply
+### Tool install script
+If you run the `install.sh`, the python venv will be placed into `/tmp/quay_venv` unless the user overrides the
+env var, `VENV`.
+
+This script also pulls the vegeta binary, and places it in the `quay-performance-scripts` directory.
+
+### Manual install
+
+#### To install Vegeta simply
 
 ```
 $ wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8.3-linux-amd64.tar.gz
@@ -14,7 +22,7 @@ $ tar -xzf vegeta-12.8.3-linux-amd64.tar.gz
 
 This will drop in an binary which we will execute with the scripts.
 
-### Install SNAFU on the node running quay_vegeta_load.sh
+#### Install SNAFU on the node running quay_vegeta_load.sh
 
 git clone the snafu repo
 
