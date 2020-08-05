@@ -8,6 +8,9 @@ fi
 token=$2
 url=$1
 
+# Backpack install path
+backpack_path=/tmp/backpack
+
 # Load the venv
 venv_path=${VENV:-/tmp/quay_venv}
 source $venv_path/bin/activate
@@ -17,6 +20,8 @@ version="/api/v1"
 uuid=$(uuidgen)
 
 # Vars for test
+labels=${LABELS:-false}
+namespace=${NAMESPACE:-quay-mysql57}
 org=${ORG:-test}
 password=${PASSWORD:-password}
 target_num=${TARGET:-1000}
@@ -117,3 +122,11 @@ create_repo $target_num
 add_user_to_team $target_num
 add_team_to_repo $target_num
 
+cd $backpack_path
+if [ "$labels" = true ]; then
+  ./run_backpack.sh -s $elastic -p $es_port -n $namespace -x -u $uuid -l quay -v app
+  ./run_backpack.sh -s $elastic -p $es_port -n $namespace -x -u $uuid -l quay -v db
+else
+  ./run_backpack.sh -s $elastic -p $es_port -n $namespace -x -u $uuid
+  ./run_backpack.sh -s $elastic -p $es_port -n $namespace -x -u $uuid
+fi
