@@ -20,3 +20,6 @@ git clone https://github.com/cloud-bulldozer/touchstone
 cd touchstone
 python setup.py develop
 
+# Clone Backpack for metadata capture
+cd /tmp
+git clone https://github.com/cloud-bulldozer/backpack

@@ -38,7 +38,6 @@ After you have copied the repo, install the python application.
  $ python3.6 setup.py develop
 ```
 
-
 ## Workflow
 Once Quay has been deployed and the superuser/application token has been generated the performance workloads can be ran.
 
@@ -65,6 +64,8 @@ The `attack_load.sh` and `attack_run.sh` assume we have K8s infrastucture to run
 Variables to edit or review
 
 ```
+labels=${LABELS:-false}			# If the user as applied labeles for the quay app and quay db on the nodes (see below)..
+namespace=${NAMESPACE:-quay-mysql57}	# Namespace to launch pods to collect metadata
 org=${ORG:-test}			# In the creation of the superuser/application you create an origanization which the application lives under.
 password=${PASSWORD:-password}		# password we should update the user accounts with
 target_num=${TARGET:-1000}		# Number of accounts to create
@@ -82,6 +83,9 @@ Either you can modify the variables in the script or simply set them with :
 ```
 export ORG=test
 ```
+
+To help have targted metadata collection, set labels on the nodes where Quay is running. For the `quay-app` use quay:app and for the node where the db is located
+use `quay:db`.
 
 Once those values are updated, execute the `quay_vegeta_load.sh` script. Passing the quay URL and the superuser application token.
 
