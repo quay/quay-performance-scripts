@@ -1,11 +1,57 @@
 # Quay Perf Testing
-## Assumptions
-The Quay Operator has been deployed.
+
+## Quick Start
+
+The following steps can help you quickly get started with running the
+Quay Performance Test suite.
+
+**Setup**
+
+- Deploy Quay to an Openshift Cluster using the Quay Operator. 
+- Create a Route or LoadBalancer pointing to the Quay Service
+- In Quay, perform the following steps:
+  - Create a user called `admin`
+  - Login as `admin`
+  - Create an organization called `test`
+  - Within that organization, create an application called `test`
+  - Within that application, navigate to "Generate Token"
+  - Select all check-boxes to grant full privileges and click "Generate Access Token"
+  - Store the access token. It will be used in later steps.
+- Create a VM located near your Openshift Cluster. For example, it may be
+  an AWS ec2 instance in the same region. This will be used for running the
+  tests.
+- Ensure the following packages are installed
+  - `wget`
+  - `python >= 3.6`
+  - `git`
+  - `oc` [Download Link](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz)
+  - `jq`
+  - `bc`
+- SSH into the VM.
+- Clone this repository: `git clone https://github.com/quay/quay-performance-scripts.git`
+- Install the test tools: `cd quay-performance-scripts; ./install.sh`
+- Modify `attack_load.sh` to set the following variables:
+  - `QUAY_URL=<url of quay>` (Note: Do not prefix http or https)
+- Modify `attack_run.sh` to set the following variables:
+  - `QUAY_URL=<url of quay>`
+- Modify `quay_vegeta_load.sh` or set environment variables to override the defaults.
+  - Change `NAMESPACE` to reflect the namespace the tests should use
+
+**Execute Tests**
+
+At this point, everything should be configured. You'll need the Access Token you created earlier in Quay. Run the following commands sequentially. I recommend running these commands in a `tmux` or GNU `screen` session to avoid interrupting tests if you are disconnected.
+
+- `quay_vegeta_load.sh <https://quay url> <access token>`
+- `attack_load.sh`
+- `attack_run.sh`
+
+Assuming no errors were encountered, the results from your tests will be displayed through STDOUT. They will also be pushed to the ElasticSearch host mentioned in the *.sh files.
 
 ## Additionall Tooling
 This script assumes the Vegeta binary is colocated with the scripts.
 
 ### Tool install script
+
 If you run the `install.sh`, the python venv will be placed into `/tmp/quay_venv` unless the user overrides the
 env var, `VENV`.
 
