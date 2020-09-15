@@ -8,6 +8,11 @@ export PARALLELISM=1
 export NUM_USERS=1
 export CONCURRENT_JOBS=10
 
+export UUID=$(uuidgen)
+export ES=search-cloud-perf-lqrf3jjtaqo7727m7ynd2xyt4y.us-west-2.es.amazonaws.com
+export ES_PORT=80
+
+
 kubectl delete ns quay-perf
 kubectl create ns quay-perf
 kubectl delete cm load-script -n quay-perf --ignore-not-found

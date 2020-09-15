@@ -5,6 +5,16 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
+export ES_URL=${ES:-https://search-cloud-perf-lqrf3jjtaqo7727m7ynd2xyt4y.us-west-2.es.amazonaws.com:443}
+export USER=$ELASTIC_USER
+if [[ -z $USER ]]; then
+  export ESUSER=""
+else
+  export ESUSER="--user ${USER}"
+fi
+
+run_date=$(date +%s%3N)
+
 function create_tag() {
   repo=$1
   echo ""
@@ -16,9 +26,27 @@ function create_tag() {
   curl -k -L -X GET -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/latest" > /tmp/repo_manifest_${pick}_1_$tag
   content=$(jq '.tag="'"${tag}"'"' /tmp/repo_manifest_${pick}_1_$tag)
   echo $content > /tmp/repo_$tag.json
-  start=$(date +%s)
+  start=$(date +%s%3N)
   curl -k --data @/tmp/repo_$tag.json -L -X PUT -H "Authorization: Bearer $target_token" "https://${quay}/v2/${prefix}_user_${pick}/repo_${repo}/manifests/${tag}" -H "Content-Type: application/json"
-  echo Tag : $(($(date +%s) - ${start})) >> /tmp/push-performance.log
+  end=$(date +%s%3N)
+  latency=$((${end} - ${start}))
+  echo "${repo},${num_tags},${iter},${start},${end},${latency}" >> /tmp/latency_report.log
+}
+
+function index_latency() {
+        while IFS=, read -r repo num_tags iter tstart tend latency
+	do
+	    curl $ESUSER -X POST -H "Content-Type: application/json" -H "Cache-Control: no-cache" -d '{
+	        "uuid" : "'$UUID'",
+		"iteration" : '$iter',
+		"timestamp" : "'$run_date'",
+		"repo" : "'$repo'",
+		"num_tags" : '$num_tags',
+		"start_time" : "'$tstart'",
+		"end_time" : "'$tend'",
+		"latency" : '$latency'
+            }' $ES_URL/repo-push-timing/_doc/
+        done < /tmp/latency_report.log
 }
 
 prefix=${PREFIX:-perf-test}
@@ -58,6 +86,7 @@ for repo in $repos; do
     count=0
     echo $count
     echo $max_concurrent
+    rm /tmp/latency_report.log
     for iter in $(seq 1 $num_tags); do
       if [[ $count -gt $max_concurrent ]] ; then
         sleep 5
@@ -68,9 +97,10 @@ for repo in $repos; do
        count=$((count+1))
       fi
     done
+    echo "Waiting for all tasks to complete"
+    wait
+    cat /tmp/latency_report.log
+    index_latency
 
   fi
 done
-
-cat /tmp/push-performance.log
-
