@@ -1,174 +1,108 @@
-# Quay Perf Testing
+# Quay Performance Tests
 
-## Quick Start
+## Description
 
-The following steps can help you quickly get started with running the
-Quay Performance Test suite.
+The purpose of this repository is to provide a set of scalability and
+performance tests for Red Hat Quay and Project Quay. These tests are not
+intended to necessarily push Quay to its limit but instead collect metrics on
+various operations. These metrics are used to determine how changes to Quay
+affects its performance. A side-effect of these tests is the ability to
+identify bottlenecks and slow operations.
 
-**Setup**
+## Quickstart
 
-- Deploy Quay to an Openshift Cluster using the Quay Operator. 
-- Create a Route or LoadBalancer pointing to the Quay Service
-- In Quay, perform the following steps:
-  - Create a user called `admin`
-  - Login as `admin`
-  - Create an organization called `test`
-  - Within that organization, create an application called `test`
-  - Within that application, navigate to "Generate Token"
-  - Select all check-boxes to grant full privileges and click "Generate Access Token"
-  - Store the access token. It will be used in later steps.
-- Create a VM located near your Openshift Cluster. For example, it may be
-  an AWS ec2 instance in the same region. This will be used for running the
-  tests.
-- Ensure the following packages are installed
-  - `wget`
-  - `python >= 3.6`
-  - `git`
-  - `oc` [Download Link](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz)
-  - `jq`
-  - `bc`
-- SSH into the VM.
-- Clone this repository: `git clone https://github.com/quay/quay-performance-scripts.git`
-- Install the test tools: `cd quay-performance-scripts; ./install.sh`
-- Modify `attack_load.sh` to set the following variables:
-  - `QUAY_URL=<url of quay>` (Note: Do not prefix http or https)
-- Modify `attack_run.sh` to set the following variables:
-  - `QUAY_URL=<url of quay>`
-- Modify `quay_vegeta_load.sh` or set environment variables to override the defaults.
-  - Change `NAMESPACE` to reflect the namespace the tests should use
+The test suite is designed to run in-cluster and is fairly simple to start.
+There are a few prerequisites and they will be explained below.
 
-**Execute Tests**
+### Prerequisites
 
-At this point, everything should be configured. You'll need the Access Token you created earlier in Quay. Run the following commands sequentially. I recommend running these commands in a `tmux` or GNU `screen` session to avoid interrupting tests if you are disconnected.
+- Create an Elasticsearch instance. The results will be stored here.
+- Deploy a Kubernetes environment. The tests will run within the cluster.
+- Deploy Quay, itself.
+- In Quay, as a superuser (important), create an organization for testing
+  purposes. Within that organization, create an application for testing
+  purposes. Within that application, create an OAuth Token with all
+  permissions (checkboxes) granted. Hold on to this token as it will be used
+  later.
 
-- `quay_vegeta_load.sh <https://quay url> <access token>`
-- `attack_load.sh`
-- `attack_run.sh`
+### Execution
 
-Assuming no errors were encountered, the results from your tests will be displayed through STDOUT. They will also be pushed to the ElasticSearch host mentioned in the *.sh files.
+The test suite will run as a collection of jobs within the Kubernetes cluster.
+It is recommended to use a separate namespace for the tests.
 
-## Additionall Tooling
-This script assumes the Vegeta binary is colocated with the scripts.
+In this repository, there is a Job YAML file which will deploy the performance
+tests. This YAML file specifies some environment variables which should be
+overridden for your specific environment. The deployment file also creates
+a service account used for the Job(s) and deploys a Redis instance used as a
+central queue.
 
-### Tool install script
+1. Ensure the Job can run privileged. In Openshift, you may have to run
+   `oc adm policy add-scc-to-user privileged system:serviceaccount:$NAMESPACE:default`
+2. Edit the deployment file `deploy/test.job.yaml`
+   1. Change `QUAY_HOST` to the value of your Quay deployment's URL. This
+      should match the value of `SERVER_HOSTNAME` in Quay's `config.yaml`.
+   2. Change `QUAY_OAUTH_TOKEN` to the value of the token you created for
+      your application during the prerequisites.
+   3. Change `QUAY_ORG` to the name of the organization you created during
+      the prerequisites. Example: `test`.
+   4. Change `ES_HOST` to the hostname of your Elasticsearch instance.
+   5. Change `ES_PORT` to the port number your Elasticsearch instance is
+      listening on.
+3. Deploy the performance tests job: `kubectl create -f deploy/test.job.yaml -n $NAMESPACE`
+   
+At this point, a Job with a single pod should be running. The job will output
+a decent amount of information to the logs if you'd like to watch its progress.
+Eventually, the Job gets to a point where it will perform tests against the
+registry aspects of the container (using podman) and will create other Jobs to
+execute those operations.
 
-If you run the `install.sh`, the python venv will be placed into `/tmp/quay_venv` unless the user overrides the
-env var, `VENV`.
+## Environment Variables
 
-This script also pulls the vegeta binary, and places it in the `quay-performance-scripts` directory.
+The following environment variables can be specified in the Job's deployment
+file to change the behavior of the tests.
 
-### Manual install
+| Key | Type | Required | Description |
+| --- | ---- | :------: | ----------- |
+| QUAY_HOST | string | y | hostname of Quay instance to test |
+| QUAY_OAUTH_TOKEN | string | y | Quay Application OAuth Token. Used for authentication purposes on certain API endpoints. |
+| QUAY_ORG | string | y | The organization which will contain all created resources during the tests. |
+| ES_HOST | string | y | Hostname of the Elasticsearch instance used to store the test results. |
+| ES_PORT | string | y | Port of the Elasticsearch instance used for storing test results. |
+| BATCH_SIZE | string | n | Number of items to pop off the queue in each batch. This primarily applies to the registry push and pull tests. Do not exceed 400 until the known issue is resolved. |
+| CONCURRENCY | int | n | Defaults to 4. The quantity of requests or test executions to perform in parallel. |
 
-#### To install Vegeta simply
+## Changelog
 
-```
-$ wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8.3-linux-amd64.tar.gz
-$ tar -xzf vegeta-12.8.3-linux-amd64.tar.gz
-```
+**v0.0.2**
 
-This will drop in an binary which we will execute with the scripts.
+changes:
 
-#### Install SNAFU on the node running quay_vegeta_load.sh
+- Python is used for orchestrating and defining all tests.
+- Tests now run within a kubernetes cluster.
+- Registry tests are executed concurrently using parallel kubernetes jobs.
+- Reduced the number of steps required to run the tests.
 
-git clone the snafu repo
+known issues:
 
-```
- $ git clone https://github.com/cloud-bulldozer/snafu
-```
+- The orchestrator job does not cleanup the other jobs it creates. There is
+  no owner attribute specified so they are not cleaned up when the main Job
+  is deleted either.
+- The image used for registry operations has an issue where `podman build`
+  will leave fuse processes running after it has completed. This can cause a
+  situation where all available threads are used. Due to this issue, the batch
+  size for each Job in the "podman push" tests are limited to 400.
+- The container image uses alpine:edge. This is the only version of Alpine which
+  includes podman. Alpine was chosen as there are complications which arise from
+  trying to perform build/push/pull operations within Kubernetes and Openshift.
+  It seemed to eliminate some of those issues. Eventually, a stable image should
+  be used instead.
+- The output logging of some subprocesses is broken and creates very long lines.
+- The primary Job does not watch for the failure of its child Jobs.
 
-Note: You must have at least python3.6 installed.
+0.0.1
 
-After you have copied the repo, install the python application.
+- The original implementation.
+  
+## Hacking on the Tests
 
-```
- $ python3.6 setup.py develop
-```
-
-## Workflow
-Once Quay has been deployed and the superuser/application token has been generated the performance workloads can be ran.
-
-The `attack_load.sh` and `attack_run.sh` assume we have K8s infrastucture to run the load testing.
-
-```
-    User creation
-[ quay_vegeta_load.sh ]
-        |
-        |
-        ↓
-    Load Repos
-[ attack_load.sh ]
-        |
-        |
-        ↓
-  Run Load Test
-[ attack_run.sh ]
-
-```
-
-### User creation : quay_vegeta_load.sh
-
-Variables to edit or review
-
-```
-labels=${LABELS:-false}			# If the user as applied labeles for the quay app and quay db on the nodes (see below)..
-namespace=${NAMESPACE:-quay-mysql57}	# Namespace to launch pods to collect metadata
-org=${ORG:-test}			# In the creation of the superuser/application you create an origanization which the application lives under.
-password=${PASSWORD:-password}		# password we should update the user accounts with
-target_num=${TARGET:-1000}		# Number of accounts to create
-rate=${RATE:-50}			# Rate of creation
-prefix=${PREFIX:-perf-test}		# What to prefix to use for the accounts ie perf-test_user_XX
-elastic=${ES:-es-server} 		# Elasticsearch server to send latency data
-es_port=${ES_PORT:-80}			# Elasticserach port, usual 9200
-db=${DB:-mysql57}			# What was the backend database
-test_name=${TEST:-performance_test}	# Describe the test or the env
-quay_version=${QUAY_VERSION:-3}		# Version of quay
-```
-
-Either you can modify the variables in the script or simply set them with :
-
-```
-export ORG=test
-```
-
-To help have targted metadata collection, set labels on the nodes where Quay is running. For the `quay-app` use quay:app and for the node where the db is located
-use `quay:db`.
-
-Once those values are updated, execute the `quay_vegeta_load.sh` script. Passing the quay URL and the superuser application token.
-
-Example execution:
-
-```
-$ root@ip-172-31-66-66: ~/quay_perf # time ./quay_vegeta_load.sh https://quay-testing.cluster.dev <api-key>
-```
-
-### Load Quay with repos and tags : attack_load.sh ->  targeted-build-script.sh
-
-Variables to edit or review
-```
-export QUAY_URL=<URL>		# Remove https, simply pass the URL without https
-export PREFIX=pref-test 	# Prefix used above to create the accounts
-export PARALLELISM=1    	# How many concurrent jobs to run?
-export NUM_USERS=1		# How many users to load up
-export CONCURRENT_JOBS=10	# How many tags to generate at once in each job
-```
-
-Script that will create 5 repos by default, each with different amount of tags:
-
-- Repo with 10 tags
-- Repo with 100 tags
-- Repo with 500 tags
-- Repo with 1000 tags
-- Repo with 10000 tags
-
-This script will choose a random user to build all the above with.
-
-## Database
-The database provided here is a dump from psql with a token generated for organization `test`
-
-## Token
-The default token is `opiqq6KJpCnn4YWqS4kkPku7pohjfzKX10EOGrUi`, after running the `quay_init.sh` script run the following
-
-```
-$ curl -k -X GET -H "Authorization: Bearer opiqq6KJpCnn4YWqS4kkPku7pohjfzKX10EOGrUi"  https://rook-quay-quay-openshift-quay.apps.rook43quay.perf-testing.devcluster.openshift.com/api/v1/superuser/users/
-{"users": [{"username": "quay", "kind": "user", "verified": true, "name": "quay", "super_user": true, "enabled": true, "email": "changeme@example.com", "avatar": {"color": "#8c6d31", "kind": "user", "hash": "5cc105f67a24cab8379ad1cfd5dfdebb", "name": "quay"}}]}
-```
+(TODO) This section still needs to be written.

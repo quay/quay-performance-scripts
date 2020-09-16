@@ -1,0 +1,6 @@
+# Explicitly Installed
+# TODO: Pin the Versions
+redis
+kubernetes
+elasticsearch>=7.0.0,<8.0.0
+git+https://github.com/cloud-bulldozer/snafu
