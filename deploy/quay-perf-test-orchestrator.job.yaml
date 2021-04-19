@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quay-perf-test-orchestrator
+  labels:
+    quay-perf-test-component: orchestrator
+spec:
+  template:
+    spec:
+      serviceAccountName: quay-perf-test
+      containers:
+      - name: python
+        image: quay.io/alecmerdler/quay-performance-test:latest
+        securityContext:
+          privileged: true
+        env:
+          - name: QUAY_HOST
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: SERVER_HOSTNAME
+          - name: QUAY_OAUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: QUAY_OAUTH_TOKEN
+          - name: QUAY_ORG
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: QUAY_ORG
+          - name: ES_HOST
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: ES_HOST
+          - name: ES_PORT
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: ES_PORT
+          - name: ES_USER
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: ES_USER
+          - name: ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: ES_PASSWORD
+          - name: PYTHONUNBUFFERED
+            valueFrom:
+              secretKeyRef:
+                name: quay-performance-test-orchestrator
+                key: PYTHONUNBUFFERED
+        resources:
+          requests:
+            cpu: "1"
+            memory: "512Mi"
+      restartPolicy: Never
+  backoffLimit: 0

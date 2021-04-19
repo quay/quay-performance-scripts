@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    quay-perf-test-component: redis-service
+spec:
+  ports:
+    - port: 6379
+  selector:
+    quay-perf-test-component: redis

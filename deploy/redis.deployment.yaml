@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    quay-perf-test-component: redis
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      quay-perf-test-component: redis
+  template:
+    metadata:
+      labels:
+        quay-perf-test-component: redis
+    spec:
+      containers:
+      - name: redis-master
+        image: registry.access.redhat.com/rhscl/redis-32-rhel7
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 6379

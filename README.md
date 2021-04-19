@@ -50,7 +50,7 @@ central queue.
       listening on.
 3. Deploy the performance tests job: `kubectl create -f deploy/test.job.yaml -n $NAMESPACE`
    
-At this point, a Job with a single pod should be running. The job will output
+At this point, a Job with a single pod should be running. The Job will output
 a decent amount of information to the logs if you'd like to watch its progress.
 Eventually, the Job gets to a point where it will perform tests against the
 registry aspects of the container (using podman) and will create other Jobs to

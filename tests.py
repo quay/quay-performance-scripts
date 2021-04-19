@@ -37,6 +37,8 @@ TEST_UUID = None
 AUTH_TOKEN = None
 ES_HOST = None
 ES_PORT = None
+ES_USER = 'elastic'
+ES_PASSWORD = None
 ES_INDEX = 'quay-vegeta'  # TODO: Use environment variable
 
 
@@ -149,6 +151,8 @@ def run_vegeta(test_name, request_dicts, target_name):
     snafu_env['es'] = ES_HOST
     snafu_env['es_port'] = ES_PORT
     snafu_env['es_index'] = ES_INDEX
+    snafu_env['es_user'] = ES_USER
+    snafu_env['es_password'] = ES_PASSWORD
     snafu_env['clustername'] = QUAY_HOST
     p = Popen(cmd, stdout=PIPE, stderr=STDOUT, env=snafu_env)
     output, _ = p.communicate()
@@ -489,11 +493,10 @@ def podman_create(tags):
 
     # Write data to Elasticsearch
     logger.info("Writing 'registry push' results to Elasticsearch")
-    es = Elasticsearch([ES_HOST], port=ES_PORT)
+    es = Elasticsearch([ES_HOST], port=ES_PORT, http_auth=(ES_USER, ES_PASSWORD))
     index = 'quay-registry-push'
     docs = []
     for result in results:
-
         # Add metadata to the result
         result['uuid'] = TEST_UUID
         result['cluster_name'] = QUAY_HOST
@@ -567,7 +570,6 @@ def podman_pull(tags):
         max_failures = 3
 
         while failures < max_failures:
-
             # Time the Push
             start_time = datetime.datetime.utcnow()
             p = Popen(cmd, stdout=PIPE, stderr=PIPE)
