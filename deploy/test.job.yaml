@@ -66,26 +66,26 @@ spec:
     spec:
       containers:
       - name: python
-        image: quay.io/kmullins/quay-performance-test:latest
+        image: quay.io/syed/quay-performance-tests:latest
         securityContext:
           privileged: true
         env:
           - name: QUAY_HOST
-            value: quay.example.org
+            value: <quay-host>
           - name: QUAY_OAUTH_TOKEN
-            value: d3adb33f
+            value: <quay-oauth-token>
           - name: QUAY_ORG
-            value: perftest
+            value: loadtesting
           - name: ES_HOST
-            value: search-cloud-perf-lqrf3jjtaqo7727m7ynd2xyt4y.us-west-2.es.amazonaws.com
+            value: <es-host>
           - name: ES_PORT
-            value: "80"
+            value: "9200"
           - name: PYTHONUNBUFFERED
             value: "0"
         resources:
           requests:
             cpu: "1"
             memory: "512Mi"
+        imagePullPolicy: Always
       restartPolicy: Never
-      imagePullPolicy: Always
   backoffLimit: 0
