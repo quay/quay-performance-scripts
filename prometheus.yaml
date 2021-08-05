@@ -1,0 +1,6 @@
+scrape_configs:
+- job_name: prometheus_scrapper
+  scrape_interval: 2s
+  static_configs:
+  - targets:
+    - locust-metrics-exporter:9646

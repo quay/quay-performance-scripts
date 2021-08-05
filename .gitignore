@@ -1,1 +1,4 @@
 newjob.yaml
+__pycache__/
+venv/
+.idea/
