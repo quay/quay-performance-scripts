@@ -22,6 +22,14 @@ variable "clair_image" {
   default = "quay.io/projectquay/clair@sha256:5fec3cf459159eabe2e4e1089687e25f638183a7e9bed1ecea8724e0597f8a14"
 }
 
+variable "rds_vpc_cidr" {
+  description = "CIDR for the VPC where RDS is going to be created"
+  type        = string
+  default     = "172.33.0.0/16"
+}
+
+
+
 variable "openshift_cidrs" {
   description = "CIDR for openshift access to RDS"
   type        = list

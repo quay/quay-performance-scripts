@@ -38,6 +38,7 @@ spec:
       containers:
         - name: quay-app
           image: ${quay_image}
+          imagePullPolicy: Always
           env:
             - name: QE_K8S_CONFIG_SECRET
               # FIXME: Using `vars` is kinda ugly because it's basically templating, but this needs to be the generated `Secret` name...

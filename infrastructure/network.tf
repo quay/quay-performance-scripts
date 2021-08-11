@@ -3,9 +3,9 @@ module "rds_vpc" {
   version = "2.77.0"
 
   name                 = "${var.prefix}-vpc"
-  cidr                 = "172.33.0.0/16"
+  cidr                 = "${var.rds_vpc_cidr}"
   azs                  = data.aws_availability_zones.available.names
-  public_subnets       = ["172.33.0.0/24", "172.33.1.0/24", "172.33.2.0/24"]
+  public_subnets       = [cidrsubnet(var.rds_vpc_cidr, 8, 0), cidrsubnet(var.rds_vpc_cidr, 8, 1), cidrsubnet(var.rds_vpc_cidr, 8, 2)]
   enable_dns_hostnames = true
   enable_dns_support   = true
   create_elasticache_subnet_group	= true
