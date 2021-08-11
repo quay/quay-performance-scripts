@@ -71,11 +71,10 @@ data "template_file" "quay_template" {
 
     clair_auth_psk = base64encode("clairsharedpassword")
     clair_replicas = 1
-
   }
 }
 
 resource "local_file" "quay_deployment" {
   content = data.template_file.quay_template.rendered
-  filename = "quay_deployment.yaml"
+  filename = "${var.prefix}_quay_deployment.yaml"
 }

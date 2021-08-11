@@ -3,7 +3,7 @@ resource "aws_db_instance" "quay_db" {
   instance_class         = "db.t3.micro"
   allocated_storage      = 5
   engine                 = "mysql"
-  engine_version         = "5.7.30"
+  engine_version         = "5.7.33"
   name                   = "quay"
   username               = "quay"
   password               = var.db_password
@@ -12,6 +12,7 @@ resource "aws_db_instance" "quay_db" {
   parameter_group_name   = aws_db_parameter_group.quay_db_prameter_group.name
   publicly_accessible    = true
   skip_final_snapshot    = true
+  auto_minor_version_upgrade = false
 }
 
 resource "aws_db_parameter_group" "quay_db_prameter_group" {
