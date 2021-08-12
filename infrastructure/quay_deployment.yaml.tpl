@@ -242,7 +242,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: quay-route
-  namespace: perftest1-quay
+  namespace: ${namespace}
 spec:
   host: ${quay_route_host}
   port:
