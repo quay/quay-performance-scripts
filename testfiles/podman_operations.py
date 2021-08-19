@@ -12,7 +12,7 @@ class PodmanUser(User):
         """
             Login to podman
         """
-        cmd = f"podman login localhost:8080 -u {Settings.PODMAN_USERNAME} -p {Settings.PODMAN_PASSWORD} --tls-verify=false"
+        cmd = f"podman login {Settings.PODMAN_HOST} -u {Settings.PODMAN_USERNAME} -p {Settings.PODMAN_PASSWORD} --tls-verify=false"
         return run(cmd, shell=True, capture_output=True)
 
     @trigger_event(request_type="podman", name="Remove Images")
@@ -42,7 +42,7 @@ class PodmanUser(User):
             Tagging image via podman.
         """
         # TODO: Remove hardcoded image names by randomizing tagging
-        cmd = f"podman tag quay.io/alecmerdler/bad-image:critical localhost:8080/admin/bad-image:critical"
+        cmd = f"podman tag quay.io/alecmerdler/bad-image:critical {Settings.PODMAN_HOST}/admin/bad-image:critical"
         return run(cmd, shell=True, capture_output=True)
 
     @task
@@ -52,5 +52,5 @@ class PodmanUser(User):
         """
             Pushing image via podman.
         """
-        cmd = f"podman push localhost:8080/admin/bad-image:critical --tls-verify=false"
+        cmd = f"podman push {Settings.PODMAN_HOST}/admin/bad-image:critical --tls-verify=false"
         return run(cmd, shell=True, capture_output=True)
