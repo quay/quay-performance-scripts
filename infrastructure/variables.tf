@@ -1,3 +1,9 @@
+variable "prefix" {
+  description = "Prefix for instances"
+  type        = string
+  default     = "perftest1"
+}
+
 variable "aws_profile" {
   description = "AWS profile used for deployment"
   type        = string
@@ -28,18 +34,10 @@ variable "rds_vpc_cidr" {
   default     = "172.33.0.0/16"
 }
 
-
-
 variable "openshift_cidrs" {
   description = "CIDR for openshift access to RDS"
   type        = list
   default     = ["10.0.0.0/8", "172.30.0.0/16"]
-}
-
-variable "prefix" {
-  description = "Prefix for instances"
-  type        = string
-  default     = "perftest1"
 }
 
 variable "db_password" {
