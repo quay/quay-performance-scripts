@@ -1,4 +1,9 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+   name: ${namespace}
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cluster-service-ca
@@ -30,8 +35,6 @@ spec:
             sources:
             - secret:
                 name: quay-config-secret
-#            - secret:
-#                name: quay-config-tls
         - name: extra-ca-certs
           configMap:
             name: cluster-service-ca
@@ -41,8 +44,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: QE_K8S_CONFIG_SECRET
-              # FIXME: Using `vars` is kinda ugly because it's basically templating, but this needs to be the generated `Secret` name...
-              value: $(QE_K8S_CONFIG_SECRET)
+              value: quay-config-secret
             - name: QE_K8S_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -98,6 +100,57 @@ spec:
             - name: extra-ca-certs
               readOnly: true
               mountPath: /conf/stack/extra_ca_certs
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: quay-app
+  namespace: ${namespace}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - extensions
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: quay-app
+  namespace: ${namespace}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: quay-app
+  namespace: ${namespace}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: quay-app
+subjects:
+- kind: ServiceAccount
+  name: quay-app
 ---
 apiVersion: v1
 kind: Service

@@ -11,6 +11,10 @@ module "rds_vpc" {
   create_elasticache_subnet_group	= true
 }
 
+data "http" "self_public_ip" {
+  url = "http://ipv4.icanhazip.com"
+}
+
 data "aws_vpc" "openshift_vpc" {
   id = var.openshift_vpc_id
 }
@@ -42,14 +46,14 @@ resource "aws_security_group" "db_security_group" {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
 
   egress {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
 
   # Postgres
@@ -57,14 +61,14 @@ resource "aws_security_group" "db_security_group" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
 
   egress {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
 
   # Redis
@@ -72,16 +76,15 @@ resource "aws_security_group" "db_security_group" {
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
 
   egress {
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
-
 
   tags = {
     Name = "${var.prefix}-sg"
