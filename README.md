@@ -106,3 +106,11 @@ known issues:
 ## Hacking on the Tests
 
 (TODO) This section still needs to be written.
+
+## Running tests using Locust
+
+### Quickstart
+
+From the main directory, the docker image can be built using the command: `docker build -t perf-test -f Dockerfile-locust .`
+The built image can be run using the command: `docker run --privileged -v /tmp/csivvv:/var/lib/containers -p 8089:8089 --name quay-test -d perf-test`
+Upon successful starting of the container, the locust dashboard is accessible on port 8089.
