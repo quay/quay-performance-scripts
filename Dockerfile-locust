@@ -1,0 +1,11 @@
+FROM fedora:32
+
+RUN dnf -y update && dnf -y install fuse3-devel && yum install python3
+RUN dnf -y install podman
+
+ADD . /mnt
+WORKDIR /mnt
+
+RUN pip install -r /mnt/requirements.txt
+EXPOSE 8089
+CMD ["locust", "-f", "/mnt/testfiles/podman_operations.py"]
