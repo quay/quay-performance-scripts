@@ -1,7 +1,6 @@
 resource "aws_s3_bucket" "quay_s3_storage" {
   bucket = "${var.prefix}-quay-storage"
   force_destroy = true
-  acl    = "private"
 
   versioning {
     enabled = true
@@ -22,9 +21,10 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   origin {
     domain_name = aws_s3_bucket.quay_s3_storage.bucket_regional_domain_name
     origin_id   = local.s3_origin_id
+    origin_path = "/images"
 
     s3_origin_config {
-      origin_access_identity = ""
+      origin_access_identity = "${aws_cloudfront_origin_access_identity.quay_cloudfront_aoi.cloudfront_access_identity_path}"
     }
   }
 
@@ -92,6 +92,36 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     cloudfront_default_certificate = true
   }
 }
+
+resource "aws_cloudfront_origin_access_identity" "quay_cloudfront_aoi" {}
+
+resource "aws_s3_bucket_policy" "quay_cloudfront_acess" {
+  bucket = "${aws_s3_bucket.quay_s3_storage.id}"
+  policy = "${data.aws_iam_policy_document.quay_cloudfront_access.json}"
+}
+
+data "aws_iam_policy_document" "quay_cloudfront_access" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.quay_s3_storage.arn}/*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["${aws_cloudfront_origin_access_identity.quay_cloudfront_aoi.iam_arn}"]
+    }
+  }
+
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = ["${aws_s3_bucket.quay_s3_storage.arn}"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["${aws_cloudfront_origin_access_identity.quay_cloudfront_aoi.iam_arn}"]
+    }
+  }
+}
+
 
 resource "aws_iam_user" "s3_user" {
   name = "${var.prefix}-s3-user"

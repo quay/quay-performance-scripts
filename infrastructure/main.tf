@@ -24,7 +24,7 @@ resource "tls_self_signed_cert" "quay_ssl_cert" {
   }
 
   uris= ["${local.quay_endpoint}"]
-
+  is_ca_certificate=true
   validity_period_hours = 12000
 
   allowed_uses = [
