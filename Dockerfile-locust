@@ -8,4 +8,4 @@ WORKDIR /mnt
 
 RUN pip install -r /mnt/requirements.txt
 EXPOSE 8089
-CMD ["locust", "-f", "/mnt/testfiles/podman_operations.py"]
+CMD ["locust", "-f", "/mnt/testfiles/run.py"]

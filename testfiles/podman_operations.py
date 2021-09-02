@@ -7,6 +7,9 @@ from utils import trigger_event
 
 class PodmanUser(User):
 
+    def on_start(self):
+        pass
+
     @trigger_event(request_type="podman", name="Remove Images")
     def on_stop(self):
         """
