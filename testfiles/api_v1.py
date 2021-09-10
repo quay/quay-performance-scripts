@@ -1,13 +1,12 @@
 from locust import HttpUser, task, tag
 
-from config import Settings
 from utils import *
-
+import os
 
 class QuayUser(HttpUser):
 
     def on_start(self):
-        self.client.headers = {'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}
+        self.client.headers = {'Authorization': f'Bearer {os.environ["AUTH_TOKEN"]}'}
         self.name = fetch_random_user()
 
     def on_stop(self):
@@ -19,7 +18,7 @@ class QuayUser(HttpUser):
             List all the API end points
         """
         path = '/api/v1/discovery'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         self.client.get(url)
 
     @task
@@ -28,7 +27,7 @@ class QuayUser(HttpUser):
             Get user information for the authenticated user
         """
         path = '/api/v1/user/'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         self.client.get(url)
 
     @task
@@ -37,7 +36,7 @@ class QuayUser(HttpUser):
             Post data to create new user
         """
         path = '/api/v1/user/'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         data = {"username": self.name, "email": f"{self.name}@example.com", "password": "password"}
         self.client.post(url, json=data)
 
@@ -47,7 +46,7 @@ class QuayUser(HttpUser):
             Post data to delete created user: Cannot use: as deletes logged in user
         """
         path = '/api/v1/user/'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         data = {"username": self.name, "email": f"{self.name}@example.com", "password": "password"}
         self.client.delete(url, json=data)
 
@@ -57,5 +56,5 @@ class QuayUser(HttpUser):
             Get the available count of private repositories for the user
         """
         path = '/api/v1/user/private/'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         self.client.get(url)

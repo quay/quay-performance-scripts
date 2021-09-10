@@ -1,9 +1,8 @@
 from locust import User, task, tag
 from subprocess import run
 
-from config import Settings
 from utils import trigger_event
-
+import os
 
 class PodmanUser(User):
 
@@ -25,14 +24,14 @@ class PodmanUser(User):
         """
             Pushing image via podman.
         """
-        cmd = f"podman login {Settings.PODMAN_HOST} -u {Settings.PODMAN_USERNAME} -p {Settings.PODMAN_PASSWORD} --tls-verify=false"
+        cmd = f"podman login {os.environ['PODMAN_HOST']} -u {os.environ['PODMAN_USERNAME']} -p {os.environ['PODMAN_PASSWORD']} --tls-verify=false"
         run(cmd, shell=True, capture_output=True)
 
         cmd = f"podman pull quay.io/alecmerdler/bad-image:critical --tls-verify=false"
         run(cmd, shell=True, capture_output=True)
 
-        cmd= f"podman tag quay.io/alecmerdler/bad-image:critical {Settings.PODMAN_HOST}/admin/bad-image:critical"
+        cmd= f"podman tag quay.io/alecmerdler/bad-image:critical {os.environ['PODMAN_HOST']}/admin/bad-image:critical"
         run(cmd, shell=True, capture_output=True)
 
-        cmd = f"podman push {Settings.PODMAN_HOST}/admin/bad-image:critical --tls-verify=false"
+        cmd = f"podman push {os.environ['PODMAN_HOST']}/admin/bad-image:critical --tls-verify=false"
         return run(cmd, shell=True, capture_output=True)

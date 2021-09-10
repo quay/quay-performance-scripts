@@ -1,7 +1,7 @@
 from locust import HttpUser, task, tag
 
 from config import Settings
-
+import os
 import json
 
 counter = 1
@@ -25,31 +25,31 @@ class QuayUser(HttpUser):
         #     "service": "localhost:8080",
         #     "scope": []
         # }
-        # url = Settings.QUAY_HOST + Settings.V2_AUTH
-        # r = self.client.get(url, json=params, headers={'Authorization': f'Basic {Settings.ROBOT_AUTH_TOKEN}'})
+        # url = os.environ['QUAY_HOST'] + Settings.V2_AUTH
+        # r = self.client.get(url, json=params, headers={'Authorization': f'Basic {os.environ['ROBOT_AUTH_TOKEN']}'})
         # if r.status_code == 200:
         #     resp = json.loads(r.content)
         #     self.jwt_token = resp['token']
 
         # create org
-        url = Settings.QUAY_HOST + Settings.V1_CREATE_ORG
-        self.client.post(url, json={'name': self.org_name}, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='create_org')
+        url = os.environ['QUAY_HOST'] + Settings.V1_CREATE_ORG
+        self.client.post(url, json={'name': self.org_name}, headers={"Authorization": f"Bearer {os.environ['AUTH_TOKEN']}"}, name='create_org')
 
         # create repo
-        url = Settings.QUAY_HOST + Settings.V1_CREATE_REPO
+        url = os.environ['QUAY_HOST'] + Settings.V1_CREATE_REPO
         data = {"namespace": self.org_name, "repository": self.repo_name, "visibility": "public", "description": "", "repo_kind": "image"}
-        self.client.post(url, json=data, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='create_repo')
+        self.client.post(url, json=data, headers={"Authorization": f"Bearer {os.environ['AUTH_TOKEN']}"}, name='create_repo')
 
     def on_stop(self):
         # delete repo
         path = f'/api/v1/repository/{self.org_name}/{self.repo_name}'
-        url = Settings.QUAY_HOST + path
-        self.client.delete(url, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='delete_repo')
+        url = os.environ['QUAY_HOST'] + path
+        self.client.delete(url, headers={"Authorization": f"Bearer {os.environ['AUTH_TOKEN']}"}, name='delete_repo')
 
         # delete org
         path = f'/api/v1/organization/{self.org_name}'
-        url = Settings.QUAY_HOST + path
-        self.client.delete(url, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='delete_org')
+        url = os.environ['QUAY_HOST'] + path
+        self.client.delete(url, headers={"Authorization": f"Bearer {os.environ['AUTH_TOKEN']}"}, name='delete_org')
 
     @task
     def list_tags(self):
@@ -57,7 +57,7 @@ class QuayUser(HttpUser):
             List all the repo tags
         """
         path = f'/v2/{self.org_name}/{self.repo_name}/tags/list'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         self.client.get(url, headers=None, name='list_tags')
 
     # @task
@@ -67,7 +67,7 @@ class QuayUser(HttpUser):
     #     """
     #     # TODO: Fix this (Currently gives 401)
     #     path = '/v2/'
-    #     url = Settings.QUAY_HOST + path
+    #     url = os.environ['QUAY_HOST'] + path
     #     r = self.client.get(url, headers={'Authorization': f'Bearer {self.jwt_token}'}, name='v2_support_enabled')
     #     print(r.status_code, r.content)
 
@@ -77,7 +77,7 @@ class QuayUser(HttpUser):
             Check the API version and return True if it is supported
         """
         path = '/v2/_catalog'
-        url = Settings.QUAY_HOST + path
+        url = os.environ['QUAY_HOST'] + path
         self.client.get(url, name='catalog_search')
 
     @task
@@ -86,8 +86,8 @@ class QuayUser(HttpUser):
             Build repository image response
         """
         path = f'/v1/repositories/{self.org_name}/{self.repo_name}/images'
-        url = Settings.QUAY_HOST + path
-        self.client.get(url, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='get_repo_images')
+        url = os.environ['QUAY_HOST'] + path
+        self.client.get(url, headers={'Authorization': f'Bearer {os.environ["AUTH_TOKEN"]}'}, name='get_repo_images')
 
     @task
     def v1_get_tags(self):
@@ -95,8 +95,8 @@ class QuayUser(HttpUser):
             Build repository image response
         """
         path = f'/v1/repositories/{self.org_name}/{self.repo_name}/tags'
-        url = Settings.QUAY_HOST + path
-        self.client.get(url, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='v1_get_tags')
+        url = os.environ['QUAY_HOST'] + path
+        self.client.get(url, headers={'Authorization': f'Bearer {os.environ["AUTH_TOKEN"]}'}, name='v1_get_tags')
 
     @task
     def internal_ping(self):
@@ -104,5 +104,5 @@ class QuayUser(HttpUser):
             Build repository image response
         """
         path = f'/v1/_internal_ping'
-        url = Settings.QUAY_HOST + path
-        self.client.get(url, headers={'Authorization': f'Bearer {Settings.AUTH_TOKEN}'}, name='internal_ping')
+        url = os.environ['QUAY_HOST'] + path
+        self.client.get(url, headers={'Authorization': f'Bearer {os.environ["AUTH_TOKEN"]}'}, name='internal_ping')
