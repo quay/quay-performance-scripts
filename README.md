@@ -109,8 +109,19 @@ known issues:
 
 ## Running tests using Locust
 
-### Quickstart
+### Setup
+
+The project expects the following environment variables:
+- PODMAN_USERNAME: Username to log into Podman
+- PODMAN_PASSWORD: Password for the above user
+- PODMAN_HOST: The url of the host registry where images will be pushed
+- QUAY_HOST: The url where Quay is hosted
+- AUTH_TOKEN: The Authorization Token to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application.)
+
+### Running
 
 From the main directory, the docker image can be built using the command: `docker build -t perf-test -f Dockerfile-locust .`
-The built image can be run using the command: `docker run --privileged -v /tmp/csivvv:/var/lib/containers -p 8089:8089 --name quay-test -d perf-test`
+The built image can be run using the command: `docker run -e PODMAN_USERNAME="username" -e PODMAN_PASSWORD="password" -e PODMAN_HOST="localhost:8080" -e QUAY_HOST="http://www.localhost:8080" -e AUTH_TOKEN="abc" --privileged -v /tmp/csivvv:/var/lib/containers -p 8089:8089 --name quay-test -d perf-test`
 Upon successful starting of the container, the locust dashboard is accessible on port 8089.
+
+The minimum number of users spawned to run the tests must be at least equal to the number of users defined in `testfiles/run.py` to run all user classes.
