@@ -16,7 +16,6 @@ There are a few prerequisites and they will be explained below.
 
 ### Prerequisites
 
-- Create an Elasticsearch instance. The results will be stored here.
 - Deploy a Kubernetes environment. The tests will run within the cluster.
 - Deploy Quay, itself.
 - In Quay, as a superuser (important), create an organization for testing
@@ -73,6 +72,13 @@ file to change the behavior of the tests.
 
 ## Changelog
 
+**v0.1.0**
+changes:
+
+- Tests are run using locust framework
+- Concurrent testing is done using Locust in distributed mode
+- Metrics are now exported as Prometheus metrics
+
 **v0.0.2**
 
 changes:
@@ -116,12 +122,47 @@ The project expects the following environment variables:
 - PODMAN_PASSWORD: Password for the above user
 - PODMAN_HOST: The url of the host registry where images will be pushed
 - QUAY_HOST: The url where Quay is hosted
-- AUTH_TOKEN: The Authorization Token to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application.)
+- OAUTH_TOKEN: The Authorization Token to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application.)
+
+### Building
+
+From the main directory, the docker image can be built using the command: 
+
+```bash
+docker build -t perf-test -f Dockerfile-locust .
+```
 
 ### Running
 
-From the main directory, the docker image can be built using the command: `docker build -t perf-test -f Dockerfile-locust .`
-The built image can be run using the command: `docker run -e PODMAN_USERNAME="username" -e PODMAN_PASSWORD="password" -e PODMAN_HOST="localhost:8080" -e QUAY_HOST="http://www.localhost:8080" -e AUTH_TOKEN="abc" --privileged -v /tmp/csivvv:/var/lib/containers -p 8089:8089 --name quay-test -d perf-test`
-Upon successful starting of the container, the locust dashboard is accessible on port 8089.
+#### Locally for dev
 
-The minimum number of users spawned to run the tests must be at least equal to the number of users defined in `testfiles/run.py` to run all user classes.
+```
+docker run -e PODMAN_USERNAME="username" \
+    -e PODMAN_PASSWORD="password" \
+    -e PODMAN_HOST="localhost:8080" \
+    -e QUAY_HOST="http://www.localhost:8080" \
+    -e AUTH_TOKEN="abc" --privileged \
+    -v /tmp/csivvv:/var/lib/containers \
+    -p 8089:8089 --name quay-test -d perf-test`
+```
+
+Upon successful starting of the container, the locust dashboard is accessible
+on port 8089.
+
+The minimum number of users spawned to run the tests must be at least equal to
+the number of users defined in `testfiles/run.py` to run all user classes.
+
+#### Cluster
+
+The tests are run via locust in distributed mode. There is a single master
+which controls multiple worker pods. The number of replicas for the workers are
+defined in `deploy/locust-distributed.yaml` file. 
+
+Edit the `ConfigMap` `quay-locust-config` in the
+`deploy/locust-distributed.yaml` and set the variables accordingly
+
+Deploy locust on the cluster by running:
+
+```
+kubectl apply -f deploy/locust-distributed.yaml
+```
