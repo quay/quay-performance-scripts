@@ -10,7 +10,7 @@ services:
             - ./:/mnt/
         environment:
             PYTHONPATH: '/mnt'
-        command: -f /mnt/testfiles/podman_operations.py
+        command: -f /mnt/locustfiles/skopeo_operations.py
         network_mode: host
 
     locust-metrics-exporter:

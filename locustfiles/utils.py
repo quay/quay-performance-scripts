@@ -10,8 +10,8 @@ def trigger_event(**kwargs):
             start_time = datetime.datetime.utcnow()
             response = func(self)
             end_time = datetime.datetime.utcnow()
-            if (kwargs['request_type'] == 'podman' and response.returncode == 0) or \
-                    (kwargs['request_type'] != 'podman' and response.status_code == 200):
+            if (kwargs['request_type'] == 'skopeo' and response.returncode == 0) or \
+                    (kwargs['request_type'] != 'skopeo' and response.status_code == 200):
                 events.request_success.fire(
                     request_type=kwargs['request_type'],
                     name=kwargs['name'],
@@ -20,7 +20,7 @@ def trigger_event(**kwargs):
                     response_length=0
                 )
             else:
-                err = response.stderr if kwargs['request_type'] == 'podman' else response.content
+                err = response.stderr if kwargs['request_type'] == 'skopeo' else response.content
                 events.request_failure.fire(
                     request_type=kwargs['request_type'],
                     name=kwargs['name'],
