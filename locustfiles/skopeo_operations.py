@@ -9,14 +9,6 @@ class SkopeoUser(User):
     def on_start(self):
         pass
 
-    @trigger_event(request_type="skopeo", name="Remove Images")
-    def on_stop(self):
-        """
-            Clear all images from local cache
-        """
-        cmd = f"skopeo rmi --all --force"
-        return run(cmd, shell=True, capture_output=True)
-
     @task
     @tag('skopeo_push_image')
     @trigger_event(request_type="skopeo", name="Image push")
@@ -28,10 +20,13 @@ class SkopeoUser(User):
         password = os.environ['QUAY_PASSWORD']
         host = os.environ['QUAY_HOST']
 
-        cmd = f"skopeo login -u {username} -p {password} --tls-verify=false {host} "
-        run(cmd, shell=True, capture_output=True)
+        cmd = f"skopeo login -u {username} -p {password} --tls-verify=false {host}"
+        print(cmd)
+        output = run(cmd, shell=True, capture_output=True)
+        print(output)
 
-        cmd = ("skopeo copy --tls-verify=false"
-                "docker://quay.io/alecmerdler/bad-image:critical"
+        cmd = ("skopeo copy --dest-tls-verify=false "
+                "docker://quay.io/alecmerdler/bad-image:critical "
                 f"docker://{host}/{username}/bad-image:critial")
-        run(cmd, shell=True, capture_output=True)
+        print(cmd)
+        return run(cmd, shell=True, capture_output=True)
