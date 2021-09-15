@@ -6,7 +6,7 @@ import os
 class QuayUser(HttpUser):
 
     def on_start(self):
-        self.client.headers = {'Authorization': f'Bearer {os.environ["AUTH_TOKEN"]}'}
+        self.client.headers = {'Authorization': f'Bearer {os.environ["OAUTH_TOKEN"]}'}
         self.name = fetch_random_user()
 
     def on_stop(self):

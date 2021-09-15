@@ -1,11 +1,55 @@
-FROM fedora:32
+ARG PYTHON_VERSION=3.8.6-alpine3.12
 
-RUN dnf -y update && dnf -y install fuse3-devel && yum install python3
-RUN dnf -y install podman
+FROM python:${PYTHON_VERSION} as builder
 
-ADD . /mnt
-WORKDIR /mnt
+ENV PYTHONUNBUFFERED 1
 
-RUN pip install -r /mnt/requirements.txt
+# build time dependencies
+RUN apk update && \
+        apk add --no-cache \
+        gcc \
+        g++ \
+        musl-dev \
+        linux-headers \
+        zeromq-dev \
+        libffi-dev \
+        make
+
+# build wheels instead of installing
+WORKDIR /wheels
+
+COPY requirements.txt .
+
+RUN pip install -U pip && \
+    pip wheel -r requirements.txt
+
+
+FROM python:${PYTHON_VERSION}
+
+# dependencies you need in your final image
+RUN apk update && \
+    apk add --no-cache \
+        bash \
+        libzmq
+
+# copy built previously wheels archives
+COPY --from=builder /wheels /wheels
+
+COPY requirements.txt /wheels/requirements.txt
+
+# use archives from /weels dir
+RUN pip install -U pip \
+       && pip install -r /wheels/requirements.txt -f /wheels \
+       && rm -rf /wheels \
+       && rm -rf /root/.cache/pip/*
+
+# install skopeo
+RUN apk add skopeo
+
+# Add the locustfiles
+COPY locustfiles /quay-performance-scripts/locustfiles
+
+# Expose locust web ui port
 EXPOSE 8089
-CMD ["locust", "-f", "/mnt/testfiles/run.py"]
+
+CMD ["locust", "-f", "/quay-performance-scripts/locustfiles/run.py"]
