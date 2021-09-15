@@ -13,7 +13,7 @@ class QuayUser(HttpUser):
         super().__init__(parent)
         self.repo_name = 'test_repo'
         self.robo_name = 'perf-robo'
-        self.auth_token = random.choice(Settings.AUTH_TOKENS)
+        self.oauth_token = random.choice(Settings.OAUTH_TOKENS)
         global counter
         self.org_name = 'test_org' + str(counter)
         counter += 1
@@ -34,23 +34,23 @@ class QuayUser(HttpUser):
 
         # create org
         url = os.environ['QUAY_HOST'] + Settings.V1_CREATE_ORG
-        self.client.post(url, json={'name': self.org_name}, headers={"Authorization": f"Bearer {self.auth_token}"}, name='create_org')
+        self.client.post(url, json={'name': self.org_name}, headers={"Authorization": f"Bearer {self.oauth_token}"}, name='create_org')
 
         # create repo
         url = os.environ['QUAY_HOST'] + Settings.V1_CREATE_REPO
         data = {"namespace": self.org_name, "repository": self.repo_name, "visibility": "public", "description": "", "repo_kind": "image"}
-        self.client.post(url, json=data, headers={"Authorization": f"Bearer {self.auth_token}"}, name='create_repo')
+        self.client.post(url, json=data, headers={"Authorization": f"Bearer {self.oauth_token}"}, name='create_repo')
 
     def on_stop(self):
         # delete repo
         path = f'/api/v1/repository/{self.org_name}/{self.repo_name}'
         url = os.environ['QUAY_HOST'] + path
-        self.client.delete(url, headers={"Authorization": f"Bearer {self.auth_token}"}, name='delete_repo')
+        self.client.delete(url, headers={"Authorization": f"Bearer {self.oauth_token}"}, name='delete_repo')
 
         # delete org
         path = f'/api/v1/organization/{self.org_name}'
         url = os.environ['QUAY_HOST'] + path
-        self.client.delete(url, headers={"Authorization": f"Bearer {self.auth_token}"}, name='delete_org')
+        self.client.delete(url, headers={"Authorization": f"Bearer {self.oauth_token}"}, name='delete_org')
 
     @task
     def list_tags(self):
@@ -88,7 +88,7 @@ class QuayUser(HttpUser):
         """
         path = f'/v1/repositories/{self.org_name}/{self.repo_name}/images'
         url = os.environ['QUAY_HOST'] + path
-        self.client.get(url, headers={'Authorization': f'Bearer {self.auth_token}'}, name='get_repo_images')
+        self.client.get(url, headers={'Authorization': f'Bearer {self.oauth_token}'}, name='get_repo_images')
 
     @task
     def v1_get_tags(self):
@@ -97,7 +97,7 @@ class QuayUser(HttpUser):
         """
         path = f'/v1/repositories/{self.org_name}/{self.repo_name}/tags'
         url = os.environ['QUAY_HOST'] + path
-        self.client.get(url, headers={'Authorization': f'Bearer {self.auth_token}'}, name='v1_get_tags')
+        self.client.get(url, headers={'Authorization': f'Bearer {self.oauth_token}'}, name='v1_get_tags')
 
     @task
     def internal_ping(self):
@@ -106,4 +106,4 @@ class QuayUser(HttpUser):
         """
         path = f'/v1/_internal_ping'
         url = os.environ['QUAY_HOST'] + path
-        self.client.get(url, headers={'Authorization': f'Bearer {self.auth_token}'}, name='internal_ping')
+        self.client.get(url, headers={'Authorization': f'Bearer {self.oauth_token}'}, name='internal_ping')

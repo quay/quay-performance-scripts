@@ -9,5 +9,4 @@ class Settings(object):
     V1_CREATE_REPO = '/api/v1/repository'
 
     CONTAINER_IMAGES = json.loads(os.environ['CONTAINER_IMAGES'])
-    AUTH_TOKENS = json.loads(os.environ['AUTH_TOKENS'])
-    MAX_PULL_RETRIES = 3
+    OAUTH_TOKENS = json.loads(os.environ['OAUTH_TOKENS'])
