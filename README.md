@@ -11,7 +11,7 @@ identify bottlenecks and slow operations.
 
 ## Quickstart
 
-The test suite is designed to run in-cluster and is fairly simple to start.
+The test suite is designed to run both in-cluster and on local and is fairly simple to start.
 There are a few prerequisites and they will be explained below.
 
 ### Prerequisites
@@ -23,52 +23,6 @@ There are a few prerequisites and they will be explained below.
   purposes. Within that application, create an OAuth Token with all
   permissions (checkboxes) granted. Hold on to this token as it will be used
   later.
-
-### Execution
-
-The test suite will run as a collection of jobs within the Kubernetes cluster.
-It is recommended to use a separate namespace for the tests.
-
-In this repository, there is a Job YAML file which will deploy the performance
-tests. This YAML file specifies some environment variables which should be
-overridden for your specific environment. The deployment file also creates
-a service account used for the Job(s) and deploys a Redis instance used as a
-central queue.
-
-1. Ensure the Job can run privileged. In Openshift, you may have to run
-   `oc adm policy add-scc-to-user privileged system:serviceaccount:$NAMESPACE:default`
-2. Edit the deployment file `deploy/test.job.yaml`
-   1. Change `QUAY_HOST` to the value of your Quay deployment's URL. This
-      should match the value of `SERVER_HOSTNAME` in Quay's `config.yaml`.
-   2. Change `QUAY_OAUTH_TOKEN` to the value of the token you created for
-      your application during the prerequisites.
-   3. Change `QUAY_ORG` to the name of the organization you created during
-      the prerequisites. Example: `test`.
-   4. Change `ES_HOST` to the hostname of your Elasticsearch instance.
-   5. Change `ES_PORT` to the port number your Elasticsearch instance is
-      listening on.
-3. Deploy the performance tests job: `kubectl create -f deploy/test.job.yaml -n $NAMESPACE`
-   
-At this point, a Job with a single pod should be running. The job will output
-a decent amount of information to the logs if you'd like to watch its progress.
-Eventually, the Job gets to a point where it will perform tests against the
-registry aspects of the container (using podman) and will create other Jobs to
-execute those operations.
-
-## Environment Variables
-
-The following environment variables can be specified in the Job's deployment
-file to change the behavior of the tests.
-
-| Key | Type | Required | Description |
-| --- | ---- | :------: | ----------- |
-| QUAY_HOST | string | y | hostname of Quay instance to test |
-| QUAY_OAUTH_TOKEN | string | y | Quay Application OAuth Token. Used for authentication purposes on certain API endpoints. |
-| QUAY_ORG | string | y | The organization which will contain all created resources during the tests. |
-| ES_HOST | string | y | Hostname of the Elasticsearch instance used to store the test results. |
-| ES_PORT | string | y | Port of the Elasticsearch instance used for storing test results. |
-| BATCH_SIZE | string | n | Number of items to pop off the queue in each batch. This primarily applies to the registry push and pull tests. Do not exceed 400 until the known issue is resolved. |
-| CONCURRENCY | int | n | Defaults to 4. The quantity of requests or test executions to perform in parallel. |
 
 ## Changelog
 
@@ -157,13 +111,28 @@ the number of users defined in `testfiles/run.py` to run all user classes.
 
 The tests are run via locust in distributed mode. There is a single master
 which controls multiple worker pods. The number of replicas for the workers are
-defined in `deploy/locust-distributed.yaml` file. 
+defined in `deploy/locust-distributed.yaml.example` file. 
 
-Edit the `ConfigMap` `quay-locust-config` in the
-`deploy/locust-distributed.yaml` and set the variables accordingly
+Copy the `deploy/locust-distribyted.yaml.example` file to `deploy/locust-distributed.yaml`
+
+
+```
+cp deploy/locust-distribyted.yaml.example deploy/locust-distributed.yaml
+```
+
+1. Replace the placeholder `NAMESPACE` with your namespace
+2. Edit the `ConfigMap` `quay-locust-config` in the `deploy/locust-distributed.yaml` and set the variables accordingly
+3. If you want to use a different image update the `image` field in the master and worker deployment
+4. Change the `replicas` field in the `worker` Deployment to the number you need (default is 2 workers)
 
 Deploy locust on the cluster by running:
 
 ```
 kubectl apply -f deploy/locust-distributed.yaml
+```
+
+This should deploy locust in distributed mode on the cluster. To access the web UI port-foward it locally
+
+```
+kubectl port-forward svc/locust-master -n <namespace> 8089
 ```
