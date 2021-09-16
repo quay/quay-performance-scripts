@@ -18,12 +18,12 @@ class SkopeoUser(User):
             self.image_name, self.image_tag = self.chosen_img.split(':')[0].split('/')[-1], self.chosen_img.split(':')[-1]
 
         self.upstream_image = f"docker://{self.chosen_img}"
-        self.local_image = f"docker://{os.environ['CONTAINER_HOST']}/{os.environ['PODMAN_USERNAME']}/{self.image_name}:{self.image_tag}"
+        self.local_image = f"docker://{os.environ['CONTAINER_HOST']}/{os.environ['QUAY_USERNAME']}/{self.image_name}:{self.image_tag}"
 
     def on_start(self):
         username = os.environ.get('QUAY_USERNAME', 'admin')
         password = os.environ['QUAY_PASSWORD']
-        host = os.environ['HOST']
+        host = os.environ['QUAY_HOST']
         cmd = f"skopeo login -u {username} -p {password} --tls-verify=false {host}"
         run(cmd, shell=True, capture_output=True)
 
