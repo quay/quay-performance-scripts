@@ -72,10 +72,12 @@ known issues:
 ### Setup
 
 The project expects the following environment variables:
-- `QUAY_USERNAME`: Username to log into Podman
-- `QUAY_PASSWORD`: Password for the above user
-- `QUAY_HOST`: The url where Quay is hosted
-- `OAUTH_TOKEN`: The Authorization Token to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application.)
+- QUAY_USERNAME: Username to log into Podman
+- QUAY_PASSWORD: Password for the above user
+- QUAY_HOST: The url where Quay is hosted (Eg: http://localhost:8080)
+- CONTAINER_HOST: The path where container images will be pushed to (Eg: localhost:8080)
+- OAUTH_TOKENS: A list of authorization tokens to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application. Eg: '["oauthtoken1", "oauthtoken2"]')
+- CONTAINER_IMAGES: A list of container images with tag (if not defaults to latest tag) to run tests against. Eg: '["quay.io/prometheus/node-exporter:v1.2.2", "quay.io/bitnami/sealed-secrets-controller:v0.16.0"]')
 
 ### Building
 
