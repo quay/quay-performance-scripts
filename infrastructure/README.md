@@ -23,7 +23,7 @@ Before running the infra scripts, you need to:
 1. (Optional) Create a terraform workspace that you will be working on. This is useful if you are creating multiple environments.
 
 ```
-$ terraform workspace create dev-py3
+$ terraform workspace new dev-py3
 ```
 
 2. You need to set the following **REQUIRED** variables (as environment variables prefixing with `TF_VAR_` or variables in `terraform.tfvars`)
