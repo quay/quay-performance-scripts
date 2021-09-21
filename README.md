@@ -75,7 +75,7 @@ The project expects the following environment variables:
 - QUAY_USERNAME: Username to log into Podman
 - QUAY_PASSWORD: Password for the above user
 - QUAY_HOST: The url where Quay is hosted (Eg: http://localhost:8080)
-- CONTAINER_HOST: The path where container images will be pushed to (Eg: localhost:8080)
+- CONTAINER_HOST: The registry domain where container images will be pushed (Quay's domain to test Quay. Eg: localhost:8080)
 - OAUTH_TOKENS: A list of authorization tokens to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application. Eg: '["oauthtoken1", "oauthtoken2"]')
 - CONTAINER_IMAGES: A list of container images with tag (if not defaults to latest tag) to run tests against. Eg: '["quay.io/prometheus/node-exporter:v1.2.2", "quay.io/bitnami/sealed-secrets-controller:v0.16.0"]')
 
@@ -92,12 +92,12 @@ docker build -t perf-test -f Dockerfile-locust .
 #### Locally for dev
 
 ```
-docker run -e PODMAN_USERNAME="username" \
-    -e PODMAN_PASSWORD="password" \
-    -e PODMAN_HOST="localhost:8080" \
+docker run -e QUAY_USERNAME="username" \
+    -e QUAY_PASSWORD="password" \
+    -e CONTAINER_HOST="localhost:8080" \
     -e QUAY_HOST="http://www.localhost:8080" \
-    -e AUTH_TOKEN="abc" --privileged \
-    -v /tmp/csivvv:/var/lib/containers \
+    -e OAUTH_TOKENS='["abc", "def"]' --privileged \
+    -e CONTAINER_IMAGES='["abc", "def"]' --privileged \
     -p 8089:8089 --name quay-test -d perf-test`
 ```
 
