@@ -9,6 +9,10 @@ module "rds_vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
   create_elasticache_subnet_group	= true
+
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }
 
 data "http" "self_public_ip" {
@@ -24,8 +28,9 @@ resource "aws_db_subnet_group" "db_subnet" {
   subnet_ids = module.rds_vpc.public_subnets
 
   tags = {
-    Name = "${var.prefix}-subnet"
+    Deployment = "${var.prefix}"
   }
+
 }
 
 resource "aws_db_subnet_group" "db_subnet_group" {
@@ -33,7 +38,7 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = module.rds_vpc.public_subnets
 
   tags = {
-    Name = "${var.prefix}-subnet-group"
+    Deployment = "${var.prefix}"
   }
 }
 
@@ -86,8 +91,55 @@ resource "aws_security_group" "db_security_group" {
     cidr_blocks = [data.aws_vpc.openshift_vpc.cidr_block, "${chomp(data.http.self_public_ip.body)}/32"]
   }
 
+  # Grpc
+  ingress {
+    from_port   = 55443
+    to_port     = 55443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 55443
+    to_port     = 55443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # ssh
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Internet egress
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+    
+
   tags = {
-    Name = "${var.prefix}-sg"
+    Deployment = "${var.prefix}"
   }
 }
 
@@ -105,7 +157,7 @@ resource "aws_vpc_peering_connection" "rds_openshift_peering" {
   }
 
   tags = {
-    Name = "${var.prefix}-rds-openshift-vpc-peering"
+    Deployment = "${var.prefix}"
   }
 }
 
@@ -114,7 +166,7 @@ resource "aws_route_table" "rds_to_openshift_route_table" {
   vpc_id = module.rds_vpc.vpc_id
 
   tags = {
-    Name = "${var.prefix}-rds-to-openshift-rt"
+    Deployment = "${var.prefix}"
   }
 }
 

@@ -12,13 +12,13 @@ output "quay_rds_port" {
 
 output "clair_rds_hostname" {
   description = "RDS instance hostname"
-  value       = aws_db_instance.clair_db.address
+  value       = var.enable_clair ? aws_db_instance.clair_db[0].address : null
   sensitive   = false
 }
 
 output "clair_rds_port" {
   description = "RDS instance port"
-  value       = aws_db_instance.clair_db.port
+  value       = var.enable_clair ? aws_db_instance.clair_db[0].port : null
   sensitive   = false
 }
 
@@ -33,3 +33,10 @@ output "build_redis_host" {
   value = "${aws_elasticache_replication_group.quay_build_redis.primary_endpoint_address}"
   sensitive   = false
 }
+
+output "quay_hostname" {
+  description = "Quay hostname"
+  value = "${var.prefix}.${data.aws_route53_zone.zone.name}"
+  sensitive   = false
+}
+
