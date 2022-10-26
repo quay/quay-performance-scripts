@@ -5,8 +5,10 @@ provider "aws" {
 
 data "aws_availability_zones" "available" {}
 
+# Use a known endpoint to get the IP of the router
 locals {
-  quay_endpoint = "quay-app-${var.prefix}.${var.openshift_route_suffix}"
+    quay_route_endpoint = "oauth-openshift.${var.openshift_route_suffix}"
+    quay_hostname = "${var.prefix}.${data.aws_route53_zone.zone.name}"
 }
 
 resource "tls_private_key" "quay_ssl_key" {
@@ -19,11 +21,11 @@ resource "tls_self_signed_cert" "quay_ssl_cert" {
   private_key_pem = "${tls_private_key.quay_ssl_key.private_key_pem}"
 
   subject {
-    common_name="${local.quay_endpoint}"
+    common_name="${local.quay_hostname}"
     organization = "RedHat"
   }
 
-  uris= ["${local.quay_endpoint}"]
+  dns_names = ["${local.quay_hostname}"]
   is_ca_certificate=true
   validity_period_hours = 12000
 
@@ -34,13 +36,27 @@ resource "tls_self_signed_cert" "quay_ssl_cert" {
   ]
 }
 
+data "aws_route53_zone" "zone" {
+  name         = "${var.dns_domain}"
+  private_zone = false
+}
+
+resource "aws_route53_record" "quay" {
+  zone_id = data.aws_route53_zone.zone.zone_id
+  name    = "${var.prefix}.${data.aws_route53_zone.zone.name}"
+  type    = "CNAME"
+  ttl     = "300"
+  records = ["${local.quay_route_endpoint}"]
+}
+
 data "template_file" "quay_template" {
   template = "${file("${path.module}/quay_deployment.yaml.tpl")}"
   vars = {
     namespace = "${var.prefix}-quay"
+    region = "${var.region}"
     replicas = 1
     quay_image = "${var.quay_image}"
-    quay_route_host = "${local.quay_endpoint}"
+    quay_route_host = "${local.quay_hostname}"
 
     redis_host = "${aws_elasticache_replication_group.quay_build_redis.primary_endpoint_address}"
     redis_port = "6379"
@@ -62,15 +78,22 @@ data "template_file" "quay_template" {
     ssl_key = "${indent(4, tls_private_key.quay_ssl_key.private_key_pem)}"
     ssl_cert = "${indent(4, tls_self_signed_cert.quay_ssl_cert.cert_pem)}"
 
+    enable_clair = var.enable_clair
     clair_image = "${var.clair_image}"
 
-    clair_db_host = "${aws_db_instance.clair_db.address}"
-    clair_db_port = "${aws_db_instance.clair_db.port}"
-    clair_db_user = "${aws_db_instance.clair_db.username}"
+    clair_db_host = var.enable_clair ? "${aws_db_instance.clair_db[0].address}" : null
+    clair_db_port = var.enable_clair ? "${aws_db_instance.clair_db[0].port}" : null
+    clair_db_user = var.enable_clair ? "${aws_db_instance.clair_db[0].username}" : null
     clair_db_password = "${var.db_password}"
 
     clair_auth_psk = base64encode("clairsharedpassword")
     clair_replicas = 1
+
+    builder_access_key = "${var.builder_access_key}"
+    builder_secret_key = "${var.builder_secret_key}"
+    builder_security_group_id = "${aws_security_group.db_security_group.id}"
+    builder_subnet_id = "${module.rds_vpc.public_subnets[0]}"
+    builder_ssh_keypair = "${var.builder_ssh_keypair}"
   }
 }
 

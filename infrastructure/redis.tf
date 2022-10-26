@@ -1,6 +1,6 @@
 resource "aws_elasticache_replication_group" "quay_build_redis" {
   automatic_failover_enabled    = true
-  availability_zones            = ["us-west-1a", "us-west-1b"]
+  availability_zones            = ["us-east-1a", "us-east-1b"]
   replication_group_id          = "${var.prefix}-build-redis-rep-group"
   replication_group_description = "${var.prefix} Replication Group"
   node_type                     = "cache.t2.small"
@@ -14,11 +14,17 @@ resource "aws_elasticache_replication_group" "quay_build_redis" {
   at_rest_encryption_enabled    = true
   transit_encryption_enabled    = false
   apply_immediately             = true
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }
 
 resource "aws_elasticache_subnet_group" "quay_build_redis_subnet_group" {
   name       = "${var.prefix}-build-redis-subnet"
   subnet_ids = module.rds_vpc.public_subnets
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }
 
 resource "aws_elasticache_cluster" "quay_modelcache_redis" {
@@ -30,4 +36,7 @@ resource "aws_elasticache_cluster" "quay_modelcache_redis" {
   engine_version       = "3.2.10"
   port                 = 6379
   apply_immediately = true
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }

@@ -6,10 +6,20 @@ resource "aws_s3_bucket" "quay_s3_storage" {
     enabled = true
   }
 
+  cors_rule {
+     allowed_headers = ["*"]
+     allowed_methods = ["PUT","POST", "GET", "DELETE"]
+     allowed_origins = ["*"]
+     expose_headers = ["ETag"]
+     max_age_seconds = 3000
+  }
+
   tags = {
     Name        = "${var.prefix}-quay-storage"
     Environment = "perftest"
   }
+
+
 }
 
 
