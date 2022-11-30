@@ -105,6 +105,15 @@ docker run -e QUAY_USERNAME="username" \
     -p 8089:8089 --name quay-test -d perf-test`
 ```
 
+or
+
+```
+docker run -p 8089:8089 --name quay-test -d perf-test`
+```
+
+The second command expects the variables to set via UI.
+
+
 Upon successful starting of the container, the locust dashboard is accessible
 on port 8089.
 
