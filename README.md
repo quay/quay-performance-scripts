@@ -71,15 +71,21 @@ known issues:
 
 ### Setup
 
-The project expects the following environment variables:
+The project expects the following variables. These can be set as environment variables or entered via UI:
 - QUAY_USERNAME: Username to log into Podman
 - QUAY_PASSWORD: Password for the above user
 - QUAY_HOST: The url where Quay is hosted (Eg: http://localhost:8080)
-- CONTAINER_HOST: The registry domain where container images will be pushed (Quay's domain to test Quay. Eg: localhost:8080)
-- OAUTH_TOKENS: A list of authorization tokens to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application. Eg: '["oauthtoken1", "oauthtoken2"]')
-- CONTAINER_IMAGES: A list of container images with tag (if not defaults to latest tag) to run tests against. Eg: '["quay.io/prometheus/node-exporter:v1.2.2", "quay.io/bitnami/sealed-secrets-controller:v0.16.0"]')
+- OAUTH_TOKENS: Comma separated authorization tokens for authorizing API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application. Eg: `oauthtoken1, oauthtoken2`)
 
-### Building
+### Running server locally without docker
+
+```
+locust -f locustfiles/run.py
+```
+
+### Running server locally via docker
+
+#### Building
 
 From the main directory, the docker image can be built using the command: 
 
@@ -87,17 +93,15 @@ From the main directory, the docker image can be built using the command:
 docker build -t perf-test -f Dockerfile-locust .
 ```
 
-### Running
+#### Running
 
-#### Locally for dev
+Setting above mentioned variables as environment variables in docker container:
 
 ```
 docker run -e QUAY_USERNAME="username" \
     -e QUAY_PASSWORD="password" \
-    -e CONTAINER_HOST="localhost:8080" \
     -e QUAY_HOST="http://www.localhost:8080" \
-    -e OAUTH_TOKENS='["abc", "def"]' --privileged \
-    -e CONTAINER_IMAGES='["abc", "def"]' --privileged \
+    -e OAUTH_TOKENS='abc, def' --privileged \
     -p 8089:8089 --name quay-test -d perf-test`
 ```
 
