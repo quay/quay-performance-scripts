@@ -3,7 +3,7 @@ resource "aws_db_instance" "clair_db" {
   instance_class         = "db.t3.micro"
   allocated_storage      = 50
   engine                 = "postgres"
-  engine_version         = "13.2"
+  engine_version         = "13.7"
   name                   = "clair"
   username               = "clair"
   password               = var.db_password

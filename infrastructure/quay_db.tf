@@ -13,6 +13,7 @@ resource "aws_db_instance" "quay_db" {
   publicly_accessible    = true
   skip_final_snapshot    = true
   auto_minor_version_upgrade = false
+  multi_az = var.quay_db_multi_az
 }
 
 resource "aws_db_parameter_group" "quay_db_prameter_group" {

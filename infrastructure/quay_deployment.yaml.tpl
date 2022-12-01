@@ -181,6 +181,35 @@ spec:
   selector:
     quay-component: quay-app
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quay-app-lb
+  namespace: ${namespace}
+  labels:
+    quay-component: quay-app
+spec:
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      name: https
+      port: 443
+      targetPort: 8443
+    - protocol: TCP
+      name: http
+      port: 80
+      targetPort: 8080
+    - name: jwtproxy
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+    - name: grpc
+      protocol: TCP
+      port: 55443
+      targetPort: 55443
+  selector:
+    quay-component: quay-app
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -290,24 +319,6 @@ spec:
   selector:
     quay-component: clair-app
   type: ClusterIP
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: quay-route
-  namespace: ${namespace}
-spec:
-  host: ${quay_route_host}
-  port:
-    targetPort: https
-  tls:
-    insecureEdgeTerminationPolicy: Redirect
-    termination: passthrough
-  to:
-    kind: Service
-    name: quay-app
-    weight: 100
-  wildcardPolicy: None
 ---
 apiVersion: v1
 kind: ServiceAccount

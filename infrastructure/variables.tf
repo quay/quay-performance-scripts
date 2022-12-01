@@ -13,7 +13,7 @@ variable "aws_profile" {
 variable "region" {
   description = "Region to deploy resources"
   type        = string
-  default     = "us-west-1"
+  default     = "us-east-1"
 }
 
 variable "quay_image" {
@@ -31,7 +31,7 @@ variable "clair_image" {
 variable "rds_vpc_cidr" {
   description = "CIDR for the VPC where RDS is going to be created"
   type        = string
-  default     = "172.33.0.0/16"
+  default     = "172.31.0.0/16"
 }
 
 variable "openshift_cidrs" {
@@ -49,11 +49,17 @@ variable "db_password" {
 variable "openshift_vpc_id" {
   description = "VPC ID of the openshift cluster"
   type        = string
-  default     = "vpc-0b2768f48c445b49f"
+  default     = "vpc-0708b20c341aeb3d0"
 }
 
 variable "openshift_route_suffix" {
   description = "Route suffix for the Openshift cluster"
   type        = string
   default     = "apps.quaydev-rosa-1.czz9.p1.openshiftapps.com"
+}
+
+variable "quay_db_multi_az" {
+  description = "Enable multi az"
+  type = bool
+  default = false
 }
