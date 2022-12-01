@@ -19,13 +19,13 @@ variable "region" {
 variable "quay_image" {
   description = "image to use for quay"
   type = string
-  default = "quay.io/projectquay/quay@sha256:46334210eeb21aa6205215d1c4dbc40ea3381887c21a05d0bc47203c8f938987"
+  default = "quay.io/projectquay/quay:latest
 }
 
 variable "clair_image" {
   description = "image to use for quay"
   type = string
-  default = "quay.io/projectquay/clair@sha256:5fec3cf459159eabe2e4e1089687e25f638183a7e9bed1ecea8724e0597f8a14"
+  default = "quay.io/projectquay/clair:nightly
 }
 
 variable "enable_clair" {
