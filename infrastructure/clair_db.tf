@@ -3,7 +3,7 @@ resource "aws_db_instance" "clair_db" {
   instance_class         = "db.t3.micro"
   allocated_storage      = 50
   engine                 = "postgres"
-  engine_version         = "13.7"
+  engine_version         = "14.2"
   name                   = "clair"
   username               = "clair"
   password               = var.db_password
@@ -12,9 +12,18 @@ resource "aws_db_instance" "clair_db" {
   parameter_group_name   = aws_db_parameter_group.clair_db_prameter_group.name
   publicly_accessible    = true
   skip_final_snapshot    = true
+
+  tags = {
+    Deployment = "${var.prefix}"
+  }
+  count            = var.enable_clair ? 1 : 0
 }
 
 resource "aws_db_parameter_group" "clair_db_prameter_group" {
   name   = "${var.prefix}-clair-db-parameter-group"
-  family = "postgres13"
+  family = "postgres14"
+
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }

@@ -28,6 +28,12 @@ variable "clair_image" {
   default = "quay.io/projectquay/clair@sha256:5fec3cf459159eabe2e4e1089687e25f638183a7e9bed1ecea8724e0597f8a14"
 }
 
+variable "enable_clair" {
+  description = "Enable Clair (creates required resources)"
+  type        = bool
+  default     = false
+}
+
 variable "rds_vpc_cidr" {
   description = "CIDR for the VPC where RDS is going to be created"
   type        = string
@@ -55,7 +61,31 @@ variable "openshift_vpc_id" {
 variable "openshift_route_suffix" {
   description = "Route suffix for the Openshift cluster"
   type        = string
-  default     = "apps.quaydev-rosa-1.czz9.p1.openshiftapps.com"
+  default     = "apps.quaydev-rosa.cv2k.p1.openshiftapps.com"
+}
+
+variable "builder_ssh_keypair" {
+  description = "SSH keypair for builders"
+  type        = string
+  default     = "syed-quaydev-ssh-keypair"
+}
+
+variable "builder_access_key" {
+  description = "Access key for builder"
+  type        = string
+  default     = ""
+}
+
+variable "builder_secret_key" {
+  description = "secret key for builder"
+  type        = string
+  default     = ""
+}
+
+variable "dns_domain" {
+  description = "Domain used to reach the endpoint (set as SERVER_HOSTNAME)"
+  type        = string
+  default     = "quaydev.org."
 }
 
 variable "quay_db_multi_az" {

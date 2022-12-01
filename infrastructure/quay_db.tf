@@ -14,9 +14,16 @@ resource "aws_db_instance" "quay_db" {
   skip_final_snapshot    = true
   auto_minor_version_upgrade = false
   multi_az = var.quay_db_multi_az
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }
 
 resource "aws_db_parameter_group" "quay_db_prameter_group" {
   name   = "${var.prefix}-quay-db-parameter-group"
   family = "mysql5.7"
+
+  tags = {
+    Deployment = "${var.prefix}"
+  }
 }
