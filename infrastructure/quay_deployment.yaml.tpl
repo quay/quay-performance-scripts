@@ -244,6 +244,8 @@ stringData:
         s3_access_key: ${s3_access_key_id}
         s3_secret_key: ${s3_secret_key}
         s3_bucket: ${s3_bucket_name}
+        s3_region: us-east-1
+        cloudfront_distribution_org_overrides: {}
         storage_path: "/images"
     DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS:
     - s3_us_east_1
