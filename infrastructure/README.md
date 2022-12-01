@@ -28,7 +28,7 @@ $ terraform workspace new dev-py3
 
 2. You need to set the following **REQUIRED** variables (as environment variables prefixing with `TF_VAR_` or variables in `terraform.tfvars`)
     * `prefix` : Make sure it's unique else, it will clash with other envs
-    * `rds_vpc_cidr` : Pick an unused CIDR (defaults to `172.33.0.0/16`)
+    * `rds_vpc_cidr` : Pick an unused CIDR in the range `172.16.. - 172.29..` (defaults to `172.31.0.0/16`)
     * `db_password` : The password that will be set on the quay and clair RDS DBs
     
 3. You could optionally set the following variables if required
