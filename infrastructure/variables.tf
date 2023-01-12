@@ -19,13 +19,13 @@ variable "region" {
 variable "quay_image" {
   description = "image to use for quay"
   type = string
-  default = "quay.io/projectquay/quay:latest
+  default = "quay.io/projectquay/quay:latest"
 }
 
 variable "clair_image" {
   description = "image to use for quay"
   type = string
-  default = "quay.io/projectquay/clair:nightly
+  default = "quay.io/projectquay/clair:nightly"
 }
 
 variable "enable_clair" {
