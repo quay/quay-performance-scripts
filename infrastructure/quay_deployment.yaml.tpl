@@ -183,7 +183,35 @@ spec:
       targetPort: 55443
   selector:
     quay-component: quay-app
-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quay-app-lb
+  namespace: ${namespace}
+  labels:
+    quay-component: quay-app
+spec:
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      name: https
+      port: 443
+      targetPort: 8443
+    - protocol: TCP
+      name: http
+      port: 80
+      targetPort: 8080
+    - name: jwtproxy
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+    - name: grpc
+      protocol: TCP
+      port: 55443
+      targetPort: 55443
+  selector:
+    quay-component: quay-app
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -225,10 +253,6 @@ stringData:
   config.yaml: |
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
-    BUILDLOGS_REDIS:
-      host: ${redis_host}
-      port: ${redis_port}
-      ssl: false
     DATABASE_SECRET_KEY: db-secret-key
     DB_CONNECTION_ARGS:
       autorollback: true
@@ -478,10 +502,6 @@ stringData:
   config.yaml: |
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
-    BUILDLOGS_REDIS:
-      host: ${redis_host}
-      port: ${redis_port}
-      ssl: false
     DATABASE_SECRET_KEY: db-secret-key
     DB_CONNECTION_ARGS:
       autorollback: true
