@@ -22,7 +22,7 @@ from kubernetes import client, config
 # Configuration Options
 LOG_DIRECTORY = './logs'
 PROTOCOL = 'https'  # TODO: Use environment variable
-CONCURRENCY = 4
+CONCURRENCY = None
 
 
 # In cases where only a single URL is hit, request it multiple times to get
@@ -32,12 +32,16 @@ DUPLICATE_REQUEST_COUNT = 1000
 
 # Globals: ugly, but simplifies the rest of the code
 QUAY_HOST = None
-BASE_URL = None  # e.g. https://staging.quay.io
+QUAY_ORG = None
+BASE_URL = None
 TEST_UUID = None
 AUTH_TOKEN = None
 ES_HOST = None
 ES_PORT = None
-ES_INDEX = 'quay-vegeta'  # TODO: Use environment variable
+ES_INDEX = None
+PUSH_PULL_IMAGE = None
+TARGET_HIT_SIZE = None
+TEST_NAMESPACE = None
 
 
 # Used for executing tests across multiple pods
@@ -92,11 +96,13 @@ def run_vegeta(test_name, request_dicts, target_name):
 
         # Some tests do not need authentication. Allow them to pass `None`
         # as the request header to avoid injecting it.
-        if 'header' not in req_dict or req_dict['header'] is not None:
+        if 'header' not in req_dict:
             req['header'] = {
                 'Authorization': ['Bearer %s' % AUTH_TOKEN],
                 'Content-Type': ['application/json']
             }
+        else:
+            req['header'] = req_dict['header']
 
         req_string = json.dumps(req) + '\n'
         reqs = reqs + req_string
@@ -502,7 +508,7 @@ def podman_create(tags):
         # Create an Elasticsearch Doc
         doc = {
             '_index': index,
-            '_type': '_doc',
+            'type': '_doc',
             '_source': result
         }
         docs.append(doc)
@@ -621,7 +627,7 @@ def podman_pull(tags):
         # Create an Elasticsearch Doc
         doc = {
             '_index': index,
-            '_type': '_doc',
+            'type': '_doc',
             '_source': result
         }
         docs.append(doc)
@@ -697,7 +703,7 @@ def test_push(num_tags):
 
 
 def create_test_push_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count):
+                            test_uuid, token, batch_size, tag_count, image, target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
     off the queue and perform the podman build + podman push action on them.
@@ -711,13 +717,17 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='QUAY_USERNAME', value=username),
         client.V1EnvVar(name='QUAY_PASSWORD', value=password),
         client.V1EnvVar(name='CONCURRENCY', value=str(concurrency)),
+        client.V1EnvVar(name='TARGET_HIT_SIZE', value=str(target_hit_size)),
+        client.V1EnvVar(name='PUSH_PULL_IMAGE', value=image),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
+        client.V1EnvVar(name='TEST_NAMESPACE', value=namespace),
         client.V1EnvVar(name='QUAY_OAUTH_TOKEN', value=token),
         client.V1EnvVar(name='QUAY_TEST_NAME', value='push'),
         client.V1EnvVar(name='QUAY_ORG', value=QUAY_ORG),
         client.V1EnvVar(name='TEST_BATCH_SIZE', value=str(batch_size)),
         client.V1EnvVar(name='ES_HOST', value=ES_HOST),
         client.V1EnvVar(name='ES_PORT', value=str(ES_PORT)),
+        client.V1EnvVar(name='ES_INDEX', value=ES_INDEX),
     ]
 
     resource_requirements = client.V1ResourceRequirements(
@@ -729,7 +739,7 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
     container = client.V1Container(
         name='python',
-        image='quay.io/kmullins/quay-performance-test:latest',
+        image=image,
         security_context={'privileged': True},
         env=env_vars,
         resources=resource_requirements,
@@ -762,7 +772,7 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
 
 def create_test_pull_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count):
+                            test_uuid, token, batch_size, tag_count, image, target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
     off the queue and perform the podman pull action on them.
@@ -776,13 +786,17 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='QUAY_USERNAME', value=username),
         client.V1EnvVar(name='QUAY_PASSWORD', value=password),
         client.V1EnvVar(name='CONCURRENCY', value=str(concurrency)),
+        client.V1EnvVar(name='TARGET_HIT_SIZE', value=str(target_hit_size)),
+        client.V1EnvVar(name='PUSH_PULL_IMAGE', value=image),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
+        client.V1EnvVar(name='TEST_NAMESPACE', value=namespace),
         client.V1EnvVar(name='QUAY_OAUTH_TOKEN', value=token),
         client.V1EnvVar(name='QUAY_TEST_NAME', value='pull'),
         client.V1EnvVar(name='QUAY_ORG', value=QUAY_ORG),
         client.V1EnvVar(name='TEST_BATCH_SIZE', value=str(batch_size)),
         client.V1EnvVar(name='ES_HOST', value=ES_HOST),
         client.V1EnvVar(name='ES_PORT', value=str(ES_PORT)),
+        client.V1EnvVar(name='ES_INDEX', value=ES_INDEX),
     ]
 
     resource_requirements = client.V1ResourceRequirements(
@@ -794,7 +808,7 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
 
     container = client.V1Container(
         name='python',
-        image='quay.io/kmullins/quay-performance-test:latest',
+        image=image,
         security_context={'privileged': True},
         env=env_vars,
         resources=resource_requirements,
@@ -828,13 +842,11 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
 
 if __name__ == '__main__':
 
-    # Load Kubernetes configuration from the Cluster
-    # NOTE: This will not work when running this script outside of k8s
     config.load_incluster_config()
 
     QUAY_HOST = os.environ.get("QUAY_HOST")
     AUTH_TOKEN = os.environ.get("QUAY_OAUTH_TOKEN")
-    CONCURRENCY = os.environ.get("CONCURRENCY", 4)
+    CONCURRENCY = int(os.environ.get("CONCURRENCY", 50))
     QUAY_ORG = os.environ.get("QUAY_ORG")
 
     TEST_UUID = os.environ.get('TEST_UUID', str(uuid.uuid4()))
@@ -842,6 +854,10 @@ if __name__ == '__main__':
 
     ES_HOST = os.environ.get('ES_HOST')
     ES_PORT = os.environ.get('ES_PORT')
+    ES_INDEX = os.environ.get('ES_INDEX')
+    PUSH_PULL_IMAGE = os.environ.get('PUSH_PULL_IMAGE')
+    TARGET_HIT_SIZE = int(os.environ.get('TARGET_HIT_SIZE'))
+    TEST_NAMESPACE = os.environ.get("TEST_NAMESPACE")
 
     # Generate a new prefix for user, repository, and team names on each run.
     # This is to avoid name collisions in the case of a re-run.
@@ -862,6 +878,9 @@ if __name__ == '__main__':
     assert ES_HOST
     assert ES_PORT
     assert ES_INDEX
+    assert PUSH_PULL_IMAGE
+    assert isinstance(TARGET_HIT_SIZE, int)
+    assert TEST_NAMESPACE
 
     # Avoid p_thread exception in currently used Dockerfile base image
     # TODO: Remove this when Alpine + Podman is fixed to avoid leaving
@@ -889,9 +908,9 @@ if __name__ == '__main__':
     organization = QUAY_ORG  # Organization/Namespace used for performance tests
     password = 'password'  # Password used for all created Users
 
-    num_users = 100
-    num_repos = 100
-    num_teams = 10
+    num_users = TARGET_HIT_SIZE
+    num_repos = TARGET_HIT_SIZE
+    num_teams = TARGET_HIT_SIZE
 
     users = ['%s_user_%s' % (PREFIX, n) for n in range(0, num_users)]
     teams = ['%s_team_%s' % (PREFIX, n) for n in range(0, num_teams)]
@@ -899,7 +918,7 @@ if __name__ == '__main__':
 
     # Create repositories which will contain a specified number of tags when the
     # registry operation tests are performed.
-    repo_sizes = (1, 5, 10, 50, 100, 500, 1000, 5000)
+    repo_sizes = (100,)
     repos_with_data = ['repo_with_%s_tags' % n for n in repo_sizes]
     repos.extend(repos_with_data)  # Create these while running tests
 
@@ -922,13 +941,15 @@ if __name__ == '__main__':
         num_users=num_users,
         num_repos=len(repos),
         num_teams=num_teams,
+        target_hit_size=TARGET_HIT_SIZE,
         concurrency=CONCURRENCY,
         repos_with_tags_sizes=repo_sizes,
+        total_tags=len(tags),
+        pull_push_batch_size=BATCH_SIZE,
+        number_of_push_pull_jobs_per_user=len(tags)//BATCH_SIZE,
     )
 
-    # Get current namespace. Workaround for:
-    # https://github.com/kubernetes-client/python/issues/363
-    namespace = open("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read()
+    namespace = TEST_NAMESPACE
 
     # These tests should run before container images are pushed
     create_users(users)
@@ -944,7 +965,7 @@ if __name__ == '__main__':
     logger.info('Queued %s tags to be created' % len(tags))
 
     # Start the Registry Push Test job
-    create_test_push_job(namespace, QUAY_HOST, users[0], password, CONCURRENCY, TEST_UUID, AUTH_TOKEN, BATCH_SIZE, len(tags))
+    create_test_push_job(namespace, QUAY_HOST, users[0], password, CONCURRENCY, TEST_UUID, AUTH_TOKEN, BATCH_SIZE, len(tags), PUSH_PULL_IMAGE, TARGET_HIT_SIZE)
     time.sleep(60)  # Give the Job time to start
     while True:
 
@@ -966,7 +987,7 @@ if __name__ == '__main__':
     logger.info('Queued %s tags to be pulled' % len(tags))
 
     # Start the Registry Pull Test job
-    create_test_pull_job(namespace, QUAY_HOST, users[0], password, CONCURRENCY, TEST_UUID, AUTH_TOKEN, BATCH_SIZE, len(tags))
+    create_test_pull_job(namespace, QUAY_HOST, users[0], password, CONCURRENCY, TEST_UUID, AUTH_TOKEN, BATCH_SIZE, len(tags), PUSH_PULL_IMAGE, TARGET_HIT_SIZE)
     time.sleep(60)  # Give the Job time to start
     while True:
 
