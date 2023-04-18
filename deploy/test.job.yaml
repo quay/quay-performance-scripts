@@ -4,9 +4,9 @@ kind: Role
 metadata:
   name: quay-perf-test-serviceaccount
 rules:
-- apiGroups: ["extensions", "apps", "batch"]
-  resources: ["deployments", "jobs", "pods", "services", "jobs/status"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["extensions", "apps", "batch", "security.openshift.io", "policy"]
+  resources: ["deployments", "jobs", "pods", "services", "jobs/status", "podsecuritypolicies", "securitycontextconstraints"]
+  verbs: ["use", "get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -66,22 +66,32 @@ spec:
     spec:
       containers:
       - name: python
-        image: quay.io/syed/quay-performance-tests:latest
+        image: quay.io/vchalla/quay-load:latest
         securityContext:
           privileged: true
         env:
           - name: QUAY_HOST
             value: <quay-host>
           - name: QUAY_OAUTH_TOKEN
-            value: <quay-oauth-token>
+            value: <quay-token>
           - name: QUAY_ORG
-            value: loadtesting
+            value: <quay-test-org>
           - name: ES_HOST
             value: <es-host>
           - name: ES_PORT
-            value: "9200"
+            value: <es-port>
           - name: PYTHONUNBUFFERED
             value: "0"
+          - name: ES_INDEX
+            value: <es-index>
+          - name: PUSH_PULL_IMAGE
+            value: <image-for-testing>
+          - name: TARGET_HIT_SIZE
+            value: <hit-size>
+          - name: CONCURRENCY
+            value: <concurrency>
+          - name: TEST_NAMESPACE
+            value: <test-namespace>
         resources:
           requests:
             cpu: "1"
