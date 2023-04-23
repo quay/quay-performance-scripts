@@ -1050,51 +1050,6 @@ if __name__ == '__main__':
         users_copy = users_copy[CONCURRENCY:]
     batch_process(users_copy, batch_args)
 
-    # # Container Operations
-    # redis_client.delete('tags_to_push')  # avoid stale data
-    # redis_client.rpush('tags_to_push', *tags)
-    # logger.info('Queued %s tags to be created' % len(tags))
-
-    # # Start the Registry Push Test job
-    # create_test_push_job(namespace, QUAY_HOST, users[0], password, CONCURRENCY, TEST_UUID, AUTH_TOKEN, BATCH_SIZE, len(tags), PUSH_PULL_IMAGE, TARGET_HIT_SIZE)
-    # time.sleep(60)  # Give the Job time to start
-    # while True:
-
-    #     # Check Job Status
-    #     job_api = client.BatchV1Api()
-    #     resp = job_api.read_namespaced_job_status(name='test-registry-push', namespace=namespace)
-    #     completion_time = resp.status.completion_time
-    #     if completion_time:
-    #         logger.info("Job 'test-registry-push' completed.")
-    #         break
-
-    #     # Log Queue Status
-    #     remaining = redis_client.llen('tags_to_push')
-    #     logger.info('Waiting for "test-registry-push" to finish. Queue: %s/%s' % (remaining, len(tags)))
-    #     time.sleep(60 * 5)  # 5 minutes
-
-    # redis_client.delete('tags_to_pull')  # avoid stale data
-    # redis_client.rpush('tags_to_pull', *tags)
-    # logger.info('Queued %s tags to be pulled' % len(tags))
-
-    # # Start the Registry Pull Test job
-    # create_test_pull_job(namespace, QUAY_HOST, users[0], password, CONCURRENCY, TEST_UUID, AUTH_TOKEN, BATCH_SIZE, len(tags), PUSH_PULL_IMAGE, TARGET_HIT_SIZE)
-    # time.sleep(60)  # Give the Job time to start
-    # while True:
-
-    #     # Check Job Status
-    #     job_api = client.BatchV1Api()
-    #     resp = job_api.read_namespaced_job_status(name='test-registry-pull', namespace=namespace)
-    #     completion_time = resp.status.completion_time
-    #     if completion_time:
-    #         logger.info("Job 'test-registry-pull' completed.")
-    #         break
-
-    #     # Log Queue Status
-    #     remaining = redis_client.llen('tags_to_pull')
-    #     logger.info('Waiting for "test-registry-pull" to finish. Queue: %s/%s' % (remaining, len(tags)))
-    #     time.sleep(60 * 5)  # 5 minutes
-
     # These tests should run *after* repositories contain images
     get_catalog()
     for repo in repos_with_data:
