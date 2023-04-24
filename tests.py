@@ -442,11 +442,11 @@ def podman_create(tags):
 
         # Give failures a few tries as this load test is not always performed
         # within production quality environments.
-        failures = 0
-        successes = 0
+        failure_count = 0
+        success_count = 0
         max_failures = 3
 
-        while failures < max_failures:
+        while failure_count < max_failures:
 
             # Call Podman to push the Dockerfile
             cmd = [
@@ -468,14 +468,14 @@ def podman_create(tags):
             try:
                 assert p.returncode == 0
                 success = True
-                successes = successes + 1
+                success_count = success_count + 1
             except Exception:
                 success = False
-                failures = failures + 1
+                failure_count = failure_count + 1
                 logger.info("Failed to push tag: %s" % tag)
                 logger.info("STDOUT: %s" % output)
                 logger.info("STDERR: %s" % errors)
-                logger.info("Retrying. %s/%s failures." % (failures, max_failures))
+                logger.info("Retrying. %s/%s failures." % (failure_count, max_failures))
 
             # Statistics / Data
             elapsed_time = end_time - start_time
@@ -484,8 +484,8 @@ def podman_create(tags):
                 'elapsed_time': elapsed_time.total_seconds(),
                 'start_time': start_time,
                 'end_time': end_time,
-                'failures': failures,
-                'successes': successes,
+                'failure_count': failure_count,
+                'success_count': success_count,
                 'successful': success,
             }
             results.append(data)
@@ -573,11 +573,11 @@ def podman_pull(tags):
             '--storage-driver', 'overlay',
         ]
 
-        failures = 0
-        successes = 0
+        failure_count = 0
+        success_count = 0
         max_failures = 3
 
-        while failures < max_failures:
+        while failure_count < max_failures:
 
             # Time the Push
             start_time = datetime.datetime.utcnow()
@@ -589,14 +589,14 @@ def podman_pull(tags):
             try:
                 assert p.returncode == 0
                 success = True
-                successes = successes + 1
+                success_count = success_count + 1
             except Exception:
                 success = False
-                failures = failures + 1
+                failure_count = failure_count + 1
                 logger.info("Failed to pull tag: %s" % tag)
                 logger.info("STDOUT: %s" % output)
                 logger.info("STDERR: %s" % errors)
-                logger.info("Retrying. %s/%s failures." % (failures, max_failures))
+                logger.info("Retrying. %s/%s failures." % (failure_count, max_failures))
 
             # Statistics / Data
             elapsed_time = end_time - start_time
@@ -605,8 +605,8 @@ def podman_pull(tags):
                 'elapsed_time': elapsed_time.total_seconds(),
                 'start_time': start_time,
                 'end_time': end_time,
-                'successes': successes,
-                'failures': failures,
+                'success_count': success_count,
+                'failure_count': failure_count,
                 'successful': success,
             }
             results.append(data)
@@ -847,6 +847,18 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
     logger.info("Created Job: %s", resp.metadata.name)
 
 
+"""
+This function is triggered using python multiprocessing to create push/pull jobs in parallel
+with input concurrency specified. For example: If we input 10 users with concurrency 5, It will
+create 5 push/pull jobs first and 5 push/pull jobs next in batches to process them. It uses 
+redis to store all the tags to be pushed for each user by appending the unique username at 
+the end of the tag key which is used as an unique identifier to fetch all the tags to be uploaded 
+to that specific user's account.
+
+:param user: username
+:param kwargs: args required to create jobs
+:return: None
+"""
 def parallel_process(user, **kwargs):
     common_args = kwargs
     # Container Operations
