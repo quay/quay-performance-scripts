@@ -21,7 +21,7 @@ RUN mkdir -p /opt/snafu/ \
  && pip3 install -e /opt/snafu/ \
  && rm -rf /tmp/benchmark-wrapper.tar.gz
 
-COPY tests.py .
+COPY . .
 
 # Cleanup the installation remainings
 RUN apt-get clean autoclean && \
@@ -30,4 +30,4 @@ RUN apt-get clean autoclean && \
 
 # Start the command
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["python3", "tests.py"]
+CMD ["python3", "main.py"]
