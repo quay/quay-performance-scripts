@@ -14,6 +14,7 @@ class Teams:
         """
         Create the specified teams.
 
+        :param quay_url: quay host base url
         :param org: test org to create teams in
         :param teams: list of teams
         :return None
@@ -38,6 +39,7 @@ class Teams:
         """
         Add every specified user to every specified team.
 
+        :param quay_url: quay host base url
         :param org: test org to create teams in
         :param teams: list of teams
         :param users: list of users
@@ -59,3 +61,27 @@ class Teams:
                 reqs.append(request)
         target_name = "'PUT %s'" % path
         Attacker().run_vegeta('add_team_members', reqs, target_name=target_name)
+    
+    @staticmethod
+    def list_team_members(quay_url, org, teams):
+        """
+        list team members of every specified team.
+
+        :param quay_url: quay host base url
+        :param org: test org to list teams in
+        :param teams: list of teams
+        :return None
+        """
+        print_header("Running: List Users of Teams")
+        path = '/api/v1/organization/%s/team' % org
+        base_url = quay_url + path
+        reqs = []
+        for team in teams:
+            url = base_url + '/%s/members' % (team)
+            request = {
+                'url': url,
+                'method': 'GET'
+            }
+            reqs.append(request)
+        target_name = "'GET %s'" % path
+        Attacker().run_vegeta('list_team_members', reqs, target_name=target_name)

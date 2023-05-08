@@ -34,58 +34,6 @@ redis_client = redis.Redis(host='redis')
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
-def get_catalog(quay_url):
-    """
-    Fetch the v2 catalog
-    
-    Since this is only a single endpoint for each test run, we query it multiple
-    times.
-    """
-    test_name = 'get_catalog'
-    print_header("Running: %s" % test_name)
-
-    path = '/v2/_catalog'
-    url = quay_url + path
-
-    reqs = []
-    for _ in range(0, 1000):
-        request = {
-            'method': 'GET',
-            'url': url,
-            'header': None,  # this endpoint throws 401s with the app token
-        }
-        reqs.append(request)
-
-    target_name = "'GET %s'" % path
-    Attacker().run_vegeta(test_name, reqs, target_name=target_name)
-
-
-def list_tags(quay_url, org, repo):
-    """
-    List all tags for all given repositories.
-
-    Since this is only a single endpoint for each test run, we query it multiple
-    times.
-    """
-    print_header('List Tags', repository=repo)
-    test_name = 'list_tags_for_%s' % repo
-
-    path = '/v2/%s/%s/tags/list' % (org, repo)
-    url = quay_url + path
-
-    reqs = []
-    for _ in range(0, 1000):
-        request = {
-            'url': url,
-            'method': 'GET',
-            'header': None,  # this endpoint throws 401s with the app token
-        }
-        reqs.append(request)
-
-    target_name = "'GET %s'" % path
-    Attacker().run_vegeta(test_name, reqs, target_name=target_name)
-
-
 def podman_login(username, password):
     """
     Execute podman to login to the registry.
@@ -684,7 +632,7 @@ if __name__ == '__main__':
 
     # Create repositories which will contain a specified number of tags when the
     # registry operation tests are performed.
-    repo_sizes = (5,)
+    repo_sizes = (100,)
     repos_with_data = ['repo_with_%s_tags' % n for n in repo_sizes]
     repos.extend(repos_with_data)  # Create these while running tests
 
@@ -717,13 +665,16 @@ if __name__ == '__main__':
 
     namespace = env_config["test_namespace"]
 
+    # Load Phase
     # These tests should run before container images are pushed
     Users.create_users(env_config["base_url"], users)
     Users.update_passwords(env_config["base_url"], users, password)
     Repositories.create_repositories(env_config["base_url"], organization, repos)
+    Repositories.update_repositories(env_config["base_url"], organization, repos)
     Teams.create_teams(env_config["base_url"], organization, teams)
     Teams.add_team_members(env_config["base_url"], organization, teams, users)
     Permissions.add_teams_to_organization_repos(env_config["base_url"], organization, repos, teams)
+    Permissions.add_users_to_organization_repos(env_config["base_url"], organization, repos, users)
 
     batch_args = {
         "namespace": namespace,
@@ -745,7 +696,13 @@ if __name__ == '__main__':
         users_copy = users_copy[env_config["concurrency"]:]
     batch_process(users_copy, batch_args)
 
+    # List/Run Phase
     # These tests should run *after* repositories contain images
-    get_catalog(env_config["base_url"])
-    for repo in repos_with_data:
-        list_tags(env_config["base_url"], organization, repo)
+    Users.list_users(env_config['base_url'], env_config["target_hit_size"])
+    Users.get_users(env_config['base_url'], users)
+    Repositories.get_repositories(env_config['base_url'], organization, repos)
+    Permissions.list_team_permissions(env_config['base_url'], organization, teams)
+    Permissions.get_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
+    Permissions.list_teams_of_organization_repos(env_config['base_url'], organization, repos)
+    Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
+    Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
