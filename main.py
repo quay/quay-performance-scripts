@@ -186,17 +186,10 @@ def podman_create(tags):
             except Exception:
                 success = False
                 failure_count = failure_count + 1
-<<<<<<< HEAD:main.py
                 logging.info("Failed to push tag: %s" % tag)
                 logging.info("STDOUT: %s" % output)
                 logging.info("STDERR: %s" % errors)
                 logging.info("Retrying. %s/%s failures." % (failure_count, max_failures))
-=======
-                logger.info("Failed to push tag: %s" % tag)
-                logger.info("STDOUT: %s" % output)
-                logger.info("STDERR: %s" % errors)
-                logger.info("Retrying. %s/%s failures." % (failure_count, max_failures))
->>>>>>> testing:tests.py
 
             # Statistics / Data
             elapsed_time = end_time - start_time
@@ -219,13 +212,8 @@ def podman_create(tags):
             logging.info("Pushing %s/%s images completed." % (n, len(tags)))
 
     # Write data to Elasticsearch
-<<<<<<< HEAD:main.py
     logging.info("Writing 'registry push' results to Elasticsearch")
     es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
-=======
-    logger.info("Writing 'registry push' results to Elasticsearch")
-    es = Elasticsearch([ES_HOST], port=ES_PORT)
->>>>>>> testing:tests.py
     index = 'quay-push-results'
     docs = []
     for result in results:
@@ -320,17 +308,10 @@ def podman_pull(tags):
             except Exception:
                 success = False
                 failure_count = failure_count + 1
-<<<<<<< HEAD:main.py
                 logging.info("Failed to pull tag: %s" % tag)
                 logging.info("STDOUT: %s" % output)
                 logging.info("STDERR: %s" % errors)
                 logging.info("Retrying. %s/%s failures." % (failure_count, max_failures))
-=======
-                logger.info("Failed to pull tag: %s" % tag)
-                logger.info("STDOUT: %s" % output)
-                logger.info("STDERR: %s" % errors)
-                logger.info("Retrying. %s/%s failures." % (failure_count, max_failures))
->>>>>>> testing:tests.py
 
             # Statistics / Data
             elapsed_time = end_time - start_time
@@ -354,13 +335,8 @@ def podman_pull(tags):
             podman_clear_cache()
 
     # Write data to Elasticsearch
-<<<<<<< HEAD:main.py
     logging.info("Writing 'registry pull' results to Elasticsearch")
     es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
-=======
-    logger.info("Writing 'registry pull' results to Elasticsearch")
-    es = Elasticsearch([ES_HOST], port=ES_PORT)
->>>>>>> testing:tests.py
     index = 'quay-pull-results'
     docs = []
     for result in results:
@@ -588,7 +564,6 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
     logging.info("Created Job: %s", resp.metadata.name)
 
 
-<<<<<<< HEAD:main.py
 def parallel_process(user, **kwargs):
     """
     This function is triggered using python multiprocessing to create push/pull jobs in parallel
@@ -597,85 +572,6 @@ def parallel_process(user, **kwargs):
     redis to store all the tags to be pushed for each user by appending the unique username at 
     the end of the tag key which is used as an unique identifier to fetch all the tags to be uploaded 
     to that specific user's account.
-=======
-"""
-This function is triggered using python multiprocessing to create push/pull jobs in parallel
-with input concurrency specified. For example: If we input 10 users with concurrency 5, It will
-create 5 push/pull jobs first and 5 push/pull jobs next in batches to process them. It uses 
-redis to store all the tags to be pushed for each user by appending the unique username at 
-the end of the tag key which is used as an unique identifier to fetch all the tags to be uploaded 
-to that specific user's account.
-
-:param user: username
-:param kwargs: args required to create jobs
-:return: None
-"""
-def parallel_process(user, **kwargs):
-    common_args = kwargs
-    # Container Operations
-    redis_client.delete('tags_to_push'+"-".join(user.split("_")))  # avoid stale data
-    redis_client.rpush('tags_to_push'+"-".join(user.split("_")), *common_args['tags'])
-    logger.info('Queued %s tags to be created' % len(common_args['tags']))
-
-    redis_client.delete('tags_to_pull'+"-".join(user.split("_")))  # avoid stale data
-    redis_client.rpush('tags_to_pull'+"-".join(user.split("_")), *common_args['tags'])
-    logger.info('Queued %s tags to be pulled' % len(common_args['tags']))
-
-    # Start the Registry Push Test job
-    create_test_push_job(common_args['namespace'], common_args['quay_host'], user, 
-    common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
-    common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
-    time.sleep(60)  # Give the Job time to start
-    while True:
-        # Check Job Status
-        job_name = 'test-registry-push'+"-".join(user.split("_"))
-        job_api = client.BatchV1Api()
-        resp = job_api.read_namespaced_job_status(name=job_name, namespace=common_args['namespace'])
-        completion_time = resp.status.completion_time
-        if completion_time:
-            logger.info("Job %s has been completed." % (job_name))
-            break
-
-        # Log Queue Status
-        remaining = redis_client.llen('tags_to_push'+"-".join(user.split("_")))
-        logger.info('Waiting for %s to finish. Queue: %s/%s' % (job_name, remaining, len(common_args['tags'])))
-        time.sleep(60 * 1)  # 1 minute
-
-    # Start the Registry Pull Test job
-    create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, 
-    common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
-    common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
-    time.sleep(60)  # Give the Job time to start
-    while True:
-
-        # Check Job Status
-        job_name = 'test-registry-pull'+"-".join(user.split("_"))
-        job_api = client.BatchV1Api()
-        resp = job_api.read_namespaced_job_status(name=job_name, namespace=common_args['namespace'])
-        completion_time = resp.status.completion_time
-        if completion_time:
-            logger.info("Job %s has been completed." % (job_name))
-            break
-
-        # Log Queue Status
-        remaining = redis_client.llen('tags_to_pull'+"-".join(user.split("_")))
-        logger.info('Waiting for %s to finish. Queue: %s/%s' % (job_name, remaining, len(common_args['tags'])))
-        time.sleep(60 * 1)  # 1 minute
-
-
-def batch_process(users_chunk, batch_args):
-    jobs = []
-    for each_user in users_chunk:
-        process = mp.Process(target=parallel_process, args=(each_user,), kwargs=batch_args)
-        jobs.append(process)
-        process.start()
-
-    for proc in jobs:
-        proc.join()
-
-
-if __name__ == '__main__':
->>>>>>> testing:tests.py
 
     :param user: username
     :param kwargs: args required to create jobs
@@ -822,7 +718,6 @@ if __name__ == '__main__':
     namespace = env_config["test_namespace"]
 
     # These tests should run before container images are pushed
-<<<<<<< HEAD:main.py
     Users.create_users(env_config["base_url"], users)
     Users.update_passwords(env_config["base_url"], users, password)
     Repositories.create_repositories(env_config["base_url"], organization, repos)
@@ -848,33 +743,6 @@ if __name__ == '__main__':
         users_copy_chunck = users_copy[0: env_config["concurrency"]]
         batch_process(users_copy_chunck, batch_args)
         users_copy = users_copy[env_config["concurrency"]:]
-=======
-    create_users(users)
-    update_passwords(users, password)
-    create_repositories(organization, repos)
-    create_teams(organization, teams)
-    add_team_members(organization, teams, users)
-    add_teams_to_organization_repos(organization, repos, teams)
-
-    batch_args = {
-        "namespace": namespace,
-        "quay_host": QUAY_HOST,
-        "password": password,
-        "concurrency": CONCURRENCY,
-        "uuid": TEST_UUID,
-        "auth_token": AUTH_TOKEN,
-        "batch_size": BATCH_SIZE,
-        "tags": tags,
-        "push_pull_image": PUSH_PULL_IMAGE,
-        "target_hit_size": TARGET_HIT_SIZE
-    }
-
-    users_copy = users[:]
-    while len(users_copy) > CONCURRENCY:
-        users_copy_chunck = users_copy[0: CONCURRENCY]
-        batch_process(users_copy_chunck, batch_args)
-        users_copy = users_copy[CONCURRENCY:]
->>>>>>> testing:tests.py
     batch_process(users_copy, batch_args)
 
     # These tests should run *after* repositories contain images

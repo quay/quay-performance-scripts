@@ -42,13 +42,12 @@ class Users:
         :param password: password to be set for the users
         :return: None
         """
-        print_header("Running: Update User Passwords", quantity=len(usernames),
-                    password=password)
+        print_header("Running: Update User Passwords", quantity=len(usernames))
         path = '/api/v1/superuser/users'
         url = quay_url + path
         reqs = []
         for user in usernames:
-            body = {'password': password}
+            body = {'password': 'password'}
             request = {
                 'url': url + '/%s' % user,
                 'body': body,
