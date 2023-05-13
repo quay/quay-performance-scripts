@@ -12,6 +12,7 @@ from endpoints.users import Users
 from endpoints.repositories import Repositories
 from endpoints.teams import Teams
 from endpoints.permissions import Permissions
+from endpoints.tags import Tags
 from config import Config
 from utils.attacker import Attacker
 from utils.util import print_header
@@ -706,3 +707,13 @@ if __name__ == '__main__':
     Permissions.list_teams_of_organization_repos(env_config['base_url'], organization, repos)
     Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
     Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
+
+    # Cleanup Phase
+    # These tests are ran at the end to cleanup stuff
+    Permissions.delete_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
+    Permissions.delete_users_of_organization_repos(env_config['base_url'], organization, repos, users)
+    Teams.delete_team_members(env_config['base_url'], organization, teams, users)
+    Teams.delete_teams(env_config['base_url'], organization, teams)
+    Tags.delete_repository_tags(env_config['base_url'], organization, "repo_with_100_tags", tags, env_config["target_hit_size"])
+    Repositories.delete_repositories(env_config['base_url'], organization, repos)
+    Users.delete_users(env_config['base_url'], users)
