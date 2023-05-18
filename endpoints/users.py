@@ -87,7 +87,7 @@ class Users:
         Gets a series of Users within the test organization.
 
         :param quay_url: quay host base url
-        :usernames: list of users to GET
+        :param usernames: list of users to GET
         :return: None
         """
         print_header("Running: Get Users", quantity=len(usernames))
@@ -103,3 +103,26 @@ class Users:
             reqs.append(request)
         target_name = "'GET %s'" % path
         Attacker().run_vegeta('get_users', reqs, target_name=target_name)
+    
+    @staticmethod
+    def delete_users(quay_url, usernames):
+        """
+        Deletes a series of Users within the test organization.
+
+        :param quay_url: quay host base url
+        :param usernames: list of users to delete
+        :return: None
+        """
+        print_header("Running: Delete Users", quantity=len(usernames))
+        path = '/api/v1/superuser/users'
+        base_url = quay_url + path
+        reqs = []
+        for name in usernames:
+            url = base_url + '/%s' % name
+            request = {
+                'url': url,
+                'method': 'DELETE'
+            }
+            reqs.append(request)
+        target_name = "'DELETE %s'" % path
+        Attacker().run_vegeta('delete_users', reqs, target_name=target_name)
