@@ -188,3 +188,55 @@ class Permissions:
             reqs.append(request)
         target_name = "'GET %s'" % path
         Attacker().run_vegeta('list_users_of_organizations_repos', reqs, target_name=target_name)
+    
+    @staticmethod
+    def delete_teams_of_organization_repos(quay_url, org, repos, teams):
+        """
+        Deletes the permissions of the specified team in all specified repos.
+
+        :param quay_url: quay host base url
+        :param org: test org to delete team permissions in
+        :param repos: list of repos to scan
+        :param teams: list of teams to delete
+        :return None
+        """
+        print_header("Running: Delete teams access to repositories")
+        path = '/api/v1/repository/%s' % org
+        base_url = quay_url + path
+        reqs = []
+        for repo in repos:
+            for team in teams:
+                url = base_url + '/%s/permissions/team/%s' % (repo, team)
+                request = {
+                    'url': url,
+                    'method': 'DELETE',
+                }
+                reqs.append(request)
+        target_name = "'DELETE %s'" % path
+        Attacker().run_vegeta('delete_teams_of_organizations_repos', reqs, target_name=target_name)
+    
+    @staticmethod
+    def delete_users_of_organization_repos(quay_url, org, repos, users):
+        """
+        Deletes the permissions of the specified user in all specified repos.
+
+        :param quay_url: quay host base url
+        :param org: test org to delete user permissions in
+        :param repos: list of repos to scan
+        :param users: list of users to delete
+        :return None
+        """
+        print_header("Running: Delete users access to repositories")
+        path = '/api/v1/repository/%s' % org
+        base_url = quay_url + path
+        reqs = []
+        for repo in repos:
+            for user in users:
+                url = base_url + '/%s/permissions/user/%s' % (repo, user)
+                request = {
+                    'url': url,
+                    'method': 'DELETE',
+                }
+                reqs.append(request)
+        target_name = "'DELETE %s'" % path
+        Attacker().run_vegeta('delete_users_of_organizations_repos', reqs, target_name=target_name)
