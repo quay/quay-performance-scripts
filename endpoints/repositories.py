@@ -92,3 +92,27 @@ class Repositories:
             reqs.append(request)
         target_name = "'GET %s'" % path
         Attacker().run_vegeta('get_repositories', reqs, target_name=target_name)
+    
+    @staticmethod
+    def delete_repositories(quay_url, org, repos):
+        """
+        Delete specified repository in the given organization.
+
+        :param quay_url: quay host base url
+        :param org: test org to list repositories in
+        :param repos: list of repos to delete
+        :return: None
+        """
+        print_header("Running: Delete Repositories")
+        path = '/api/v1/repository/%s' % org
+        base_url = quay_url + path
+        reqs = []
+        for repo in repos:
+            url = base_url + '/%s' % (repo)
+            request = {
+                'url': url,
+                'method': 'DELETE'
+            }
+            reqs.append(request)
+        target_name = "'DELETE %s'" % path
+        Attacker().run_vegeta('delete_repositories', reqs, target_name=target_name)
