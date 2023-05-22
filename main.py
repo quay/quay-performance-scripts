@@ -707,6 +707,8 @@ if __name__ == '__main__':
     Permissions.list_teams_of_organization_repos(env_config['base_url'], organization, repos)
     Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
     Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
+    Tags.get_catalog(env_config['base_url'], env_config["target_hit_size"])
+    Tags.list_tags(env_config['base_url'], env_config['quay_host'], users)
 
     # Cleanup Phase
     # These tests are ran at the end to cleanup stuff

@@ -166,6 +166,7 @@ class Permissions:
         target_name = "'GET %s'" % path
         Attacker().run_vegeta('get_users_of_organizations_repos', reqs, target_name=target_name)
 
+    @staticmethod
     def list_users_of_organization_repos(quay_url, org, repos):
         """
         Lists all users permission info in all specified repos.
