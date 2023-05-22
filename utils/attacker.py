@@ -3,6 +3,7 @@ import sys
 import json
 import base64
 import logging
+import datetime
 from config import Config
 from subprocess import run, Popen, PIPE, STDOUT
 
@@ -66,6 +67,8 @@ class Attacker:
         if not os.path.isdir(env_config["log_directory"]):
             os.mkdir(env_config["log_directory"])
 
+        start_time = datetime.datetime.utcnow()
+        logging.info(f"Sending requests to {test_name} (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
         # Run `vegeta attack` to execute the HTTP Requests
         cmd = [
             'vegeta', 'attack',
@@ -83,6 +86,10 @@ class Attacker:
         p.communicate(input=output)
         assert p.returncode == 0
 
+        end_time = datetime.datetime.utcnow()
+        logging.info(f"Ending requests to {test_name} (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        elapsed_time = end_time - start_time
+        logging.info(f"Testing {test_name} took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
         # Write Vegeta Stats to a file
         result_filename = '%s/%s_%s_result.json' % (env_config["log_directory"], env_config["test_uuid"], test_name)
         cmd = ['vegeta', 'report', '--every=1s', '--type=json', '--output=%s' % result_filename]

@@ -668,6 +668,8 @@ if __name__ == '__main__':
 
     # Load Phase
     # These tests should run before container images are pushed
+    start_time = datetime.datetime.utcnow()
+    logging.info(f"Starting load phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     Users.create_users(env_config["base_url"], users)
     Users.update_passwords(env_config["base_url"], users, password)
     Repositories.create_repositories(env_config["base_url"], organization, repos)
@@ -676,6 +678,10 @@ if __name__ == '__main__':
     Teams.add_team_members(env_config["base_url"], organization, teams, users)
     Permissions.add_teams_to_organization_repos(env_config["base_url"], organization, repos, teams)
     Permissions.add_users_to_organization_repos(env_config["base_url"], organization, repos, users)
+    end_time = datetime.datetime.utcnow()
+    logging.info(f"Ending load phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    elapsed_time = end_time - start_time
+    logging.info(f"The load phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
 
     batch_args = {
         "namespace": namespace,
@@ -690,15 +696,23 @@ if __name__ == '__main__':
         "target_hit_size": env_config["target_hit_size"]
     }
 
+    start_time = datetime.datetime.utcnow()
+    logging.info(f"Starting image push/pulls (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     users_copy = users[:]
     while len(users_copy) > env_config["concurrency"]:
         users_copy_chunck = users_copy[0: env_config["concurrency"]]
         batch_process(users_copy_chunck, batch_args)
         users_copy = users_copy[env_config["concurrency"]:]
     batch_process(users_copy, batch_args)
+    end_time = datetime.datetime.utcnow()
+    logging.info(f"Ending image push/pulls (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    elapsed_time = end_time - start_time
+    logging.info(f"The image push/pulls took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
 
     # List/Run Phase
     # These tests should run *after* repositories contain images
+    start_time = datetime.datetime.utcnow()
+    logging.info(f"Starting run phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     Users.list_users(env_config['base_url'], env_config["target_hit_size"])
     Users.get_users(env_config['base_url'], users)
     Repositories.get_repositories(env_config['base_url'], organization, repos)
@@ -709,9 +723,15 @@ if __name__ == '__main__':
     Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
     Tags.get_catalog(env_config['base_url'], env_config["target_hit_size"])
     Tags.list_tags(env_config['base_url'], env_config['quay_host'], users)
+    end_time = datetime.datetime.utcnow()
+    logging.info(f"Ending run phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    elapsed_time = end_time - start_time
+    logging.info(f"The run phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
 
     # Cleanup Phase
     # These tests are ran at the end to cleanup stuff
+    start_time = datetime.datetime.utcnow()
+    logging.info(f"Starting cleanup phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     Permissions.delete_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
     Permissions.delete_users_of_organization_repos(env_config['base_url'], organization, repos, users)
     Teams.delete_team_members(env_config['base_url'], organization, teams, users)
@@ -719,3 +739,7 @@ if __name__ == '__main__':
     Tags.delete_repository_tags(env_config['base_url'], organization, "repo_with_100_tags", tags, env_config["target_hit_size"])
     Repositories.delete_repositories(env_config['base_url'], organization, repos)
     Users.delete_users(env_config['base_url'], users)
+    end_time = datetime.datetime.utcnow()
+    logging.info(f"Ending cleanup phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    elapsed_time = end_time - start_time
+    logging.info(f"The cleanup phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
