@@ -21,7 +21,7 @@ class Config:
             'protocol': 'https',
             'quay_host': os.environ.get("QUAY_HOST"),
             'quay_org': os.environ.get("QUAY_ORG"),
-            'test_uuid': os.environ.get('TEST_UUID', str(uuid.uuid4())),
+            'test_uuid': os.environ.get('TEST_UUID'),
             'auth_token': os.environ.get("QUAY_OAUTH_TOKEN"),
             'es_host': os.environ.get('ES_HOST'),
             'es_port': os.environ.get('ES_PORT'),
