@@ -400,6 +400,7 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='ES_HOST', value=env_config["es_host"]),
         client.V1EnvVar(name='ES_PORT', value=str(env_config["es_port"])),
         client.V1EnvVar(name='ES_INDEX', value=env_config["es_index"]),
+        client.V1EnvVar(name='TEST_PHASES', value=env_config["test_phases"]),
     ]
 
     resource_requirements = client.V1ResourceRequirements(
@@ -470,6 +471,7 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='ES_HOST', value=env_config["es_host"]),
         client.V1EnvVar(name='ES_PORT', value=str(env_config["es_port"])),
         client.V1EnvVar(name='ES_INDEX', value=env_config["es_index"]),
+        client.V1EnvVar(name='TEST_PHASES', value=env_config["test_phases"]),
     ]
 
     resource_requirements = client.V1ResourceRequirements(
@@ -595,6 +597,8 @@ if __name__ == '__main__':
     if os.environ.get('TEST_UUID') is None:
         os.environ['TEST_UUID'] = str(uuid.uuid4())
     env_config = Config().get_config()
+    phases = env_config['test_phases'].split(",") if env_config['test_phases'] else []
+    phases_list = [item.lower() for item in phases]
     # Generate a new prefix for user, repository, and team names on each run.
     # This is to avoid name collisions in the case of a re-run.
     PREFIX = env_config["test_uuid"][-4:]
@@ -668,6 +672,10 @@ if __name__ == '__main__':
 
     namespace = env_config["test_namespace"]
 
+    if not ({'load', 'run', 'delete'} & set(phases_list)):
+        logging.info("No valid phases defined to run the tests. Valid options: LOAD, RUN and DELETE")
+        sys.exit()
+
     # Load Phase
     # These tests should run before container images are pushed
     start_time = datetime.datetime.utcnow()
@@ -697,7 +705,6 @@ if __name__ == '__main__':
         "push_pull_image": env_config["push_pull_image"],
         "target_hit_size": env_config["target_hit_size"]
     }
-
     start_time = datetime.datetime.utcnow()
     logging.info(f"Starting image push/pulls (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     users_copy = users[:]
@@ -711,37 +718,43 @@ if __name__ == '__main__':
     elapsed_time = end_time - start_time
     logging.info(f"The image push/pulls took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
 
-    # List/Run Phase
-    # These tests should run *after* repositories contain images
-    start_time = datetime.datetime.utcnow()
-    logging.info(f"Starting run phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    Users.list_users(env_config['base_url'], env_config["target_hit_size"])
-    Users.get_users(env_config['base_url'], users)
-    Repositories.get_repositories(env_config['base_url'], organization, repos)
-    Permissions.list_team_permissions(env_config['base_url'], organization, teams)
-    Permissions.get_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
-    Permissions.list_teams_of_organization_repos(env_config['base_url'], organization, repos)
-    Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
-    Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
-    Tags.get_catalog(env_config['base_url'], env_config["target_hit_size"])
-    Tags.list_tags(env_config['base_url'], env_config['quay_host'], users)
-    end_time = datetime.datetime.utcnow()
-    logging.info(f"Ending run phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    elapsed_time = end_time - start_time
-    logging.info(f"The run phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
+    if ('run' not in phases_list):
+        logging.info("Skipping run phase as it is not specified")
+    else:
+        # List/Run Phase
+        # These tests should run *after* repositories contain images
+        start_time = datetime.datetime.utcnow()
+        logging.info(f"Starting run phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        Users.list_users(env_config['base_url'], env_config["target_hit_size"])
+        Users.get_users(env_config['base_url'], users)
+        Repositories.get_repositories(env_config['base_url'], organization, repos)
+        Permissions.list_team_permissions(env_config['base_url'], organization, teams)
+        Permissions.get_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
+        Permissions.list_teams_of_organization_repos(env_config['base_url'], organization, repos)
+        Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
+        Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
+        Tags.get_catalog(env_config['base_url'], env_config["target_hit_size"])
+        Tags.list_tags(env_config['base_url'], env_config['quay_host'], users)
+        end_time = datetime.datetime.utcnow()
+        logging.info(f"Ending run phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        elapsed_time = end_time - start_time
+        logging.info(f"The run phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
 
-    # Cleanup Phase
-    # These tests are ran at the end to cleanup stuff
-    start_time = datetime.datetime.utcnow()
-    logging.info(f"Starting cleanup phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    Permissions.delete_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
-    Permissions.delete_users_of_organization_repos(env_config['base_url'], organization, repos, users)
-    Teams.delete_team_members(env_config['base_url'], organization, teams, users)
-    Teams.delete_teams(env_config['base_url'], organization, teams)
-    Tags.delete_repository_tags(env_config['base_url'], organization, "repo_with_100_tags", tags, env_config["target_hit_size"])
-    Repositories.delete_repositories(env_config['base_url'], organization, repos)
-    Users.delete_users(env_config['base_url'], users)
-    end_time = datetime.datetime.utcnow()
-    logging.info(f"Ending cleanup phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    elapsed_time = end_time - start_time
-    logging.info(f"The cleanup phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
+    if ('delete' not in phases_list):
+        logging.info("Skipping delete phase as it is not specified")
+    else:
+        # Cleanup Phase
+        # These tests are ran at the end to cleanup stuff
+        start_time = datetime.datetime.utcnow()
+        logging.info(f"Starting cleanup phase (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        Permissions.delete_teams_of_organization_repos(env_config['base_url'], organization, repos, teams)
+        Permissions.delete_users_of_organization_repos(env_config['base_url'], organization, repos, users)
+        Teams.delete_team_members(env_config['base_url'], organization, teams, users)
+        Teams.delete_teams(env_config['base_url'], organization, teams)
+        Tags.delete_repository_tags(env_config['base_url'], organization, "repo_with_100_tags", tags, env_config["target_hit_size"])
+        Repositories.delete_repositories(env_config['base_url'], organization, repos)
+        Users.delete_users(env_config['base_url'], users)
+        end_time = datetime.datetime.utcnow()
+        logging.info(f"Ending cleanup phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        elapsed_time = end_time - start_time
+        logging.info(f"The cleanup phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")

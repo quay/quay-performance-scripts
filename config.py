@@ -31,7 +31,8 @@ class Config:
             'target_hit_size': int(os.environ.get('TARGET_HIT_SIZE')),
             'batch_size': int(os.environ.get('TEST_BATCH_SIZE', 400)),
             'test_namespace': os.environ.get("TEST_NAMESPACE"),
-            'base_url': '%s://%s' % ("https", os.environ.get("QUAY_HOST"))
+            'base_url': '%s://%s' % ("https", os.environ.get("QUAY_HOST")),
+            'test_phases': os.environ.get('TEST_PHASES')
         }
         self.validate_config()
         return self.config
@@ -56,3 +57,4 @@ class Config:
         assert isinstance(self.config["batch_size"], int), "BATCH_SIZE is not an integer"
         assert self.config["test_namespace"], "TEST_NAMESPACE is not set"
         assert self.config["base_url"], "BASE_URL is not set"
+        assert self.config["test_phases"], "TEST_PHASES are not set. Valid options are LOAD,RUN and DELETE"
