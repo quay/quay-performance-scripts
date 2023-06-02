@@ -3,136 +3,104 @@
 ## Description
 
 The purpose of this repository is to provide a set of scalability and
-performance tests for Red Hat Quay and Project Quay. These tests are not
-intended to necessarily push Quay to its limit but instead collect metrics on
+performance tests for Red Hat Quay and Project Quay. These tests are intended to necessarily push Quay to its limits and collect metrics on
 various operations. These metrics are used to determine how changes to Quay
-affects its performance. A side-effect of these tests is the ability to
-identify bottlenecks and slow operations.
+affects its performance.
 
 ## Quickstart
 
-The test suite is designed to run both in-cluster and on local and is fairly simple to start.
-There are a few prerequisites and they will be explained below.
+The test suite is designed to run on openshift platform using a simple configuration file. We just have to set the required parameters and trigger it. More details will be shared below.
 
-### Prerequisites
-
-- Deploy a Kubernetes environment. The tests will run within the cluster.
+## Prerequisites
+- Deploy a Openshift environment. The tests will run within the cluster.
 - Deploy Quay, itself.
 - In Quay, as a superuser (important), create an organization for testing
   purposes. Within that organization, create an application for testing
   purposes. Within that application, create an OAuth Token with all
   permissions (checkboxes) granted. Hold on to this token as it will be used
   later.
+- Once after the quay application is deployed. Do a `pd_dump` in the quay postgres pod to capture the initial snapshot into a sql file and keep it copied at `assets/quaydb.sql`.
 
-## Changelog
-
-**v0.1.0**
-changes:
-
-- Tests are run using locust framework
-- Concurrent testing is done using Locust in distributed mode
-- Metrics are now exported as Prometheus metrics
-
-**v0.0.2**
-
-changes:
-
-- Python is used for orchestrating and defining all tests.
-- Tests now run within a kubernetes cluster.
-- Registry tests are executed concurrently using parallel kubernetes jobs.
-- Reduced the number of steps required to run the tests.
-
-known issues:
-
-- The orchestrator job does not cleanup the other jobs it creates. There is
-  no owner attribute specified so they are not cleaned up when the main Job
-  is deleted either.
-- The image used for registry operations has an issue where `podman build`
-  will leave fuse processes running after it has completed. This can cause a
-  situation where all available threads are used. Due to this issue, the batch
-  size for each Job in the "podman push" tests are limited to 400.
-- The container image uses alpine:edge. This is the only version of Alpine which
-  includes podman. Alpine was chosen as there are complications which arise from
-  trying to perform build/push/pull operations within Kubernetes and Openshift.
-  It seemed to eliminate some of those issues. Eventually, a stable image should
-  be used instead.
-- The output logging of some subprocesses is broken and creates very long lines.
-- The primary Job does not watch for the failure of its child Jobs.
-
-0.0.1
-
-- The original implementation.
-  
-## Hacking on the Tests
-
-(TODO) This section still needs to be written.
-
-## Running tests using Locust
-
-### Setup
-
-The project expects the following environment variables:
-- QUAY_USERNAME: Username to log into Podman
-- QUAY_PASSWORD: Password for the above user
-- QUAY_HOST: The url where Quay is hosted (Eg: http://localhost:8080)
-- CONTAINER_HOST: The registry domain where container images will be pushed (Quay's domain to test Quay. Eg: localhost:8080)
-- OAUTH_TOKENS: A list of authorization tokens to enable API calls(On Quay: Create an organization followed by creating an application in the organization. Generate token for the application. Eg: '["oauthtoken1", "oauthtoken2"]')
-- CONTAINER_IMAGES: A list of container images with tag (if not defaults to latest tag) to run tests against. Eg: '["quay.io/prometheus/node-exporter:v1.2.2", "quay.io/bitnami/sealed-secrets-controller:v0.16.0"]')
+## Running tests
 
 ### Building
 
-From the main directory, the docker image can be built using the command: 
+From the main directory, the podman image can be built and published to your remote repository (if required) using the below commands: 
 
 ```bash
-docker build -t perf-test -f Dockerfile-locust .
+podman build . -t quay-load; 
+podman tag localhost/quay-load:latest quay.io/<path-to-yourrepo>:latest; 
+podman push quay.io/<path-to-yourrepo>:latest
 ```
 
-### Running
+### Running tests on openshift platform
 
-#### Locally for dev
+Before running the tests, we need to make sure we are running `assets/quay_init.sh` to reset the postgres database with the initial snapshot and `assets/quay_redis_init.sh` to clear the redis cache.
 
-```
-docker run -e QUAY_USERNAME="username" \
-    -e QUAY_PASSWORD="password" \
-    -e CONTAINER_HOST="localhost:8080" \
-    -e QUAY_HOST="http://www.localhost:8080" \
-    -e OAUTH_TOKENS='["abc", "def"]' --privileged \
-    -e CONTAINER_IMAGES='["abc", "def"]' --privileged \
-    -p 8089:8089 --name quay-test -d perf-test`
-```
+> **NOTE**: We need to have a file at `assets/quaydb.sql` in order to run `assets/quay_init.sh` which is the snapshot captured when deployed quay initially.
 
-Upon successful starting of the container, the locust dashboard is accessible
-on port 8089.
+Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshift cluster. It takes below ENVS as arguments.
+### **Envs**
+* `QUAY_HOST` - Sting. Indicating quay host url to perform testing.
+* `QUAY_OAUTH_TOKEN` - String. Application oauth token created in the prerequisites step.
+* `QUAY_ORG`- String. Specifies the test organization.
+* `ES_HOST` - String. Elastic search host url.
+* `ES_PORT` - String. Elastic search port number.
+* `ES_INDEX` - String. Elastic search index to store the results.
+* `PUSH_PULL_IMAGE` - Image which contains source code and used in push/pull jobs for testing purposes. `quay-load` in our case.
+* `TARGET_HIT_SIZE` - String. Indicates the total amount of requests to hit the system with.
+* `CONCURRENCY` - String. Indicates the rate(concurrency) at which the requests hits must happen in parallel.
+* `TEST_NAMESPACE` - String. Namespace in which testing needs to be done.
 
-The minimum number of users spawned to run the tests must be at least equal to
-the number of users defined in `testfiles/run.py` to run all user classes.
+This should spin up a redis pod and a test orchestrator pod in your desired namespace and start running the tests. Tail the pod logs for more info.
 
-#### Cluster
+### More about tests
 
-The tests are run via locust in distributed mode. There is a single master
-which controls multiple worker pods. The number of replicas for the workers are
-defined in `deploy/locust-distributed.yaml.example` file. 
+The tests use [Vegeta](https://github.com/tsenart/vegeta) to trigger the load and index the results to specified elastic search instance. The list of apis involved in each phase as as below:
 
-Copy the `deploy/locust-distribyted.yaml.example` file to `deploy/locust-distributed.yaml`
+### LOAD PHASE 														
+> **NOTE**: n is number of objects/requests here
+#### APIs with O(n) operations
+POST /api/v1/superuser/users # create_users method  
+PUT /api/v1/superuser/users # update_passwords method  
+POST /api/v1/repository # create_repositories method  
+PUT /api/v1/repository/test # update_repositories method  
+PUT /api/v1/organization/test/team # create_teams method
 
+#### APIs with O(n^2) operations
+PUT /api/v1/organization/test/team/team_1/members/member_1 # add_team_members method  
+PUT /api/v1/repository/test/repo_1/permissions/team/team_1 # add_teams_to_organization_repos  
+PUT /api/v1/repository/test/repo_1/permissions/user/user_1 # add_users_to_organization_repos  
 
-```
-cp deploy/locust-distribyted.yaml.example deploy/locust-distributed.yaml
-```
+### RUN PHASE
+> **NOTE**: n is number of objects/requests here
+#### APIs with O(n) operations
+GET /api/v1/superuser/users/user_1 # get_users method  
+GET /api/v1/repository/test/repo_1 # get_repositories method  
+GET /api/v1/organization/test/team/team_1/permissions # list_team_permissions method  
+GET /api/v1/organization/test/team/team_1/members # list_team_members method  
+GET /api/v1/repository/test/repo_1/permissions/team/ #list_teams_of_organization_repos  
+GET /api/v1/repository/test/repo_1/permissions/user/ # list_users_of_organization_repos  
+GET /v2/user_1/repo_1/tags/list # list_tags method  
+GET /api/v1/superuser/users/ # list_users method  
+GET /v2/_catalog # get_catalog method  
 
-1. Replace the placeholder `NAMESPACE` with your namespace
-2. Edit the `ConfigMap` `quay-locust-config` in the `deploy/locust-distributed.yaml` and set the variables accordingly
-3. If you want to use a different image update the `image` field in the master and worker deployment
-4. Change the `replicas` field in the `worker` Deployment to the number you need (default is 2 workers)
+#### APIs with O(n^2) operations
+GET /api/v1/repository/test/repo_1/permissions/team/team_1 # get_teams_of_organizations_repos method  
+GET /api/v1/repository/test/repo_1/permissions/user/user_1 # get_users_of_organizations_repos method  
 
-Deploy locust on the cluster by running:
+### Image push/pulls
+Unfortunately we don’t have any APIs to hit at this moment. So those are tested using podman commands. For n objects we will be creating n jobs representing n users who will be uploading images in parallel with python multiprocessing implemented. Each job uploads and downloads 100 images.
 
-```
-kubectl apply -f deploy/locust-distributed.yaml
-```
+### DELETE PHASE  
+> **NOTE**: n is number of objects/requests here
+#### APIs with O(n) operations
+DELETE /api/v1/organization/test/team/team_1 # delete_teams method  
+DELETE /api/v1/repository/test/repo_1 # delete_repositories method  
+DELETE /api/v1/superuser/users/user_1 # delete_users method  
 
-This should deploy locust in distributed mode on the cluster. To access the web UI port-foward it locally
-
-```
-kubectl port-forward svc/locust-master -n <namespace> 8089
-```
+#### APIs with O(n^2) operations
+DELETE /api/v1/organization/test/team/team_1/members/member_1 # delete_team_members method  
+DELETE /api/v1/repository/test/repo_1/permissions/team/team_1 # delete_teams_of_organizations_repos method  
+DELETE /api/v1/repository/test/repo_1/permissions/user/user_1 # delete_users_of_organizations_repos method  
+DELETE /api/v1/repository/test/repo_1/tag/tag_1 # delete_repository_tags method  

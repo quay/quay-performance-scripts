@@ -592,6 +592,8 @@ def batch_process(users_chunk, batch_args):
 if __name__ == '__main__':
 
     config.load_incluster_config()
+    if os.environ.get('TEST_UUID') is None:
+        os.environ['TEST_UUID'] = str(uuid.uuid4())
     env_config = Config().get_config()
     # Generate a new prefix for user, repository, and team names on each run.
     # This is to avoid name collisions in the case of a re-run.
