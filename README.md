@@ -51,6 +51,7 @@ Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshi
 * `TARGET_HIT_SIZE` - String. Indicates the total amount of requests to hit the system with.
 * `CONCURRENCY` - String. Indicates the rate(concurrency) at which the requests hits must happen in parallel.
 * `TEST_NAMESPACE` - String. Namespace in which testing needs to be done.
+* `TEST_PHASES` - String. Comma separated string containing list of phases. Valid phases are LOAD, RUN and DELETE. Example: LOAD,DELETE
 
 This should spin up a redis pod and a test orchestrator pod in your desired namespace and start running the tests. Tail the pod logs for more info.
 
