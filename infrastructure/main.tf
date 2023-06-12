@@ -14,18 +14,16 @@ resource "kubernetes_namespace" "quay_ns" {
   }
 }
 
-data "aws_availability_zones" "available" {}
-
-# Use a known endpoint to get the IP of the router
-locals {
-    quay_route_endpoint = "oauth-openshift.${var.openshift_route_suffix}"
-    quay_hostname = "${var.prefix}.${data.aws_route53_zone.zone.name}"
+provider "kubernetes" {
+  config_path    = "~/.kube/config"
+  config_context = "${var.kube_context}"
 }
 
 data "template_file" "quay_template" {
   template = "${file("${path.module}/quay_deployment.yaml.tpl")}"
   vars = {
     namespace = "${var.prefix}-quay"
+
     region = "${var.region}"
     replicas = 1
     quay_image = "${var.quay_image}"
@@ -70,6 +68,8 @@ data "template_file" "quay_template" {
 
     registry_state = local.is_secondary == 1 ? "readonly" : "normal"
   }
+}
+
 }
 
 resource "local_file" "quay_deployment" {

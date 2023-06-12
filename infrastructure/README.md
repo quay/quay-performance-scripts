@@ -24,7 +24,7 @@ Before running the infra scripts, you need to:
 
 ```
 $ terraform workspace new dev-py3
-$ terraform workspace use dev-py3
+$ terraform workspace select dev-py3
 ```
 
 2. You need to set the following **REQUIRED** variables (as environment variables prefixing with `TF_VAR_` or variables in `terraform.tfvars`)
@@ -51,7 +51,6 @@ $ terraform workspace use dev-py3
     * `builder_secret_key`: AWS Secret key for builder. Used to createEC2 VMs for building
 
 The easiest way to get started is to use the provided environment variable samples in the `envs` directory
-
 
 ## Running
 
@@ -81,6 +80,7 @@ Once you get quay running, you can get the quay endpoint by running
 $ oc project <prefix>-quay
 $ kubectl get route
 ```
+
 
 ## Cleaning up
 

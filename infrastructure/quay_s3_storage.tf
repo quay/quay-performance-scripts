@@ -5,7 +5,6 @@ locals {
 resource "aws_s3_bucket" "quay_s3_storage" {
   bucket = "${var.prefix}-quay-storage"
   force_destroy = true
-
   versioning {
     enabled = true
   }
