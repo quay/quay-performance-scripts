@@ -1,17 +1,17 @@
-module "rds_vpc" {
+module "quay_vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "2.77.0"
 
   name                 = "${var.prefix}-vpc"
-  cidr                 = "${var.rds_vpc_cidr}"
+  cidr                 = "${var.quay_vpc_cidr}"
   azs                  = data.aws_availability_zones.available.names
-  public_subnets       = [cidrsubnet(var.rds_vpc_cidr, 8, 0), cidrsubnet(var.rds_vpc_cidr, 8, 1), cidrsubnet(var.rds_vpc_cidr, 8, 2)]
+  public_subnets       = [cidrsubnet(var.quay_vpc_cidr, 8, 0), cidrsubnet(var.quay_vpc_cidr, 8, 1), cidrsubnet(var.quay_vpc_cidr, 8, 2)]
   enable_dns_hostnames = true
   enable_dns_support   = true
   create_elasticache_subnet_group	= true
 
   tags = {
-    Deployment = "${var.prefix}"
+    Environment = "${var.prefix}"
   }
 }
 
@@ -25,26 +25,26 @@ data "aws_vpc" "openshift_vpc" {
 
 resource "aws_db_subnet_group" "db_subnet" {
   name       = "${var.prefix}-subnet"
-  subnet_ids = module.rds_vpc.public_subnets
+  subnet_ids = module.quay_vpc.public_subnets
 
   tags = {
-    Deployment = "${var.prefix}"
+    Environment = "${var.prefix}"
   }
 
 }
 
 resource "aws_db_subnet_group" "db_subnet_group" {
   name       = "${var.prefix}-subnet-group"
-  subnet_ids = module.rds_vpc.public_subnets
+  subnet_ids = module.quay_vpc.public_subnets
 
   tags = {
-    Deployment = "${var.prefix}"
+    Environment = "${var.prefix}"
   }
 }
 
 resource "aws_security_group" "db_security_group" {
   name   = "${var.prefix}-sg"
-  vpc_id = module.rds_vpc.vpc_id
+  vpc_id = module.quay_vpc.vpc_id
 
   # Mysql
   ingress {
@@ -121,8 +121,8 @@ resource "aws_security_group" "db_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Internet egress
-  egress {
+  # Internet
+  ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -130,22 +130,27 @@ resource "aws_security_group" "db_security_group" {
   }
 
   egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-    
-
   tags = {
-    Deployment = "${var.prefix}"
+    Environment = "${var.prefix}"
   }
 }
 
 resource "aws_vpc_peering_connection" "rds_openshift_peering" {
   peer_vpc_id   = data.aws_vpc.openshift_vpc.id
-  vpc_id        = module.rds_vpc.vpc_id
+  vpc_id        = module.quay_vpc.vpc_id
   auto_accept   = true
 
   accepter {
@@ -157,16 +162,16 @@ resource "aws_vpc_peering_connection" "rds_openshift_peering" {
   }
 
   tags = {
-    Deployment = "${var.prefix}"
+    Environment = "${var.prefix}"
   }
 }
 
 
 resource "aws_route_table" "rds_to_openshift_route_table" {
-  vpc_id = module.rds_vpc.vpc_id
+  vpc_id = module.quay_vpc.vpc_id
 
   tags = {
-    Deployment = "${var.prefix}"
+    Environment = "${var.prefix}"
   }
 }
 
@@ -178,6 +183,15 @@ resource "aws_route" "rds_to_os_r" {
 
 resource "aws_route" "os_to_rds_r" {
   route_table_id            = "${data.aws_vpc.openshift_vpc.main_route_table_id}"
-  destination_cidr_block    = "${module.rds_vpc.vpc_cidr_block}"
+  destination_cidr_block    = "${module.quay_vpc.vpc_cidr_block}"
   vpc_peering_connection_id = "${aws_vpc_peering_connection.rds_openshift_peering.id}"
 }
+
+/* TODO: Add route table entries to route ALB traffic to ELB 
+resource "aws_route_table_association" "rds_to_os_assoc" {
+    for_each = toset(module.quay_vpc.public_subnets)
+
+    subnet_id = each.value
+    route_table_id = aws_route_table.rds_to_openshift_route_table.id
+} */
+
