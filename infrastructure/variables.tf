@@ -10,10 +10,28 @@ variable "aws_profile" {
   default     = "default"
 }
 
+variable "deploy_type" {
+  description = "Primary or secondary"
+  type = string
+  default = "primary"
+}
+
 variable "region" {
-  description = "Region to deploy resources"
-  type        = string
-  default     = "us-east-1"
+  description = "Primary AWS region"
+  type = string
+  default = "us-east-1"
+}
+
+variable "primary_s3_bucket_arn" {
+  description = "ARN of the primary bucket"
+  type = string
+  default = ""
+}
+
+variable "primary_db_arn" {
+  description = "ARN of the primary DB"
+  type = string
+  default = ""
 }
 
 variable "quay_image" {
@@ -34,7 +52,7 @@ variable "enable_clair" {
   default     = false
 }
 
-variable "rds_vpc_cidr" {
+variable "quay_vpc_cidr" {
   description = "CIDR for the VPC where RDS is going to be created"
   type        = string
   default     = "172.31.0.0/16"
@@ -43,7 +61,7 @@ variable "rds_vpc_cidr" {
 variable "openshift_cidrs" {
   description = "CIDR for openshift access to RDS"
   type        = list
-  default     = ["10.0.0.0/8", "172.30.0.0/16"]
+  default     = ["10.0.0.0/8"]
 }
 
 variable "db_password" {
@@ -88,8 +106,26 @@ variable "dns_domain" {
   default     = "quaydev.org."
 }
 
+variable "dns_zone" {
+  description = "Domain used to reach the endpoint (set as SERVER_HOSTNAME)"
+  type        = string
+  default     = "quaydev.org."
+}
+
 variable "quay_db_multi_az" {
   description = "Enable multi az"
   type = bool
   default = false
+}
+
+variable "kube_context" {
+  description = "Context for the kubernetes connection"
+  type = string
+  default = "default"
+}
+
+variable "redis_azs" {
+  description = "Redis availability zones"
+  type = list
+  default = ["us-east-1a", "us-east-1b"]
 }

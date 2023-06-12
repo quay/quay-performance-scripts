@@ -24,22 +24,33 @@ Before running the infra scripts, you need to:
 
 ```
 $ terraform workspace new dev-py3
+$ terraform workspace use dev-py3
 ```
 
 2. You need to set the following **REQUIRED** variables (as environment variables prefixing with `TF_VAR_` or variables in `terraform.tfvars`)
     * `prefix` : Make sure it's unique else, it will clash with other envs
     * `rds_vpc_cidr` : Pick an unused CIDR in the range `172.16.. - 172.29..` (defaults to `172.31.0.0/16`)
     * `db_password` : The password that will be set on the quay and clair RDS DBs
-    
-3. You could optionally set the following variables if required
+    * `deploy_type`: `primary` or `secondary` this is useful for multi-region setup (default `primary`)
+    * `region` : AWS region to use for deployment (default `us-east-1`)
+    * `openshift_vpc_id` : VPC ID where openshift is deployed (used for creating peering)
+    * `openshift_cidrs`: CIDRs for openshift access to RDS (check the Openshift VPC to get this value)
+
+3. If you are deploying a **secondary** region you'll also have to add the following **REQUIRED** variables
+    * `primary_s3_bucket_arn`: ARN of the S3 bucket created in primary region. This will be used for setting up replication
+    * `primary_db_arn`: ARM of the DB created in the primary region. This will be used for setting up replication
+
+   
+4. You could optionally set the following variables if required 
     * `aws_profile`: Set this if you are not using the default account set with AWS CLI
-    * `quay_image`: Overrides the image that is being used
+    * `quay_image`: Overrides the image that is being used 
     * `clair_image`: Overrides the image that being used
+    * `quay_vpc_cidr`: CIDR of VPC where quay resources like DB, redis will be deployed
+    * `builder_ssh_keypair`: SSH Keypair created to access the build VMs (should be created prior to deploy)
+    * `builder_access_key`: AWS access key for builder. Used to createEC2 VMs for building
+    * `builder_secret_key`: AWS Secret key for builder. Used to createEC2 VMs for building
 
-## Python2 or Python3 
-
-By default the automation will start a python3 version of quay. If you want to setup a python2 (quayio) version of quay you need to update the `quay_image` to point to a python2 quay (`quay.io/app-sre/quay:3c9b9c1` for example) Before running `kubectl apply`
-
+The easiest way to get started is to use the provided environment variable samples in the `envs` directory
 
 
 ## Running
@@ -48,13 +59,13 @@ The following gives an example of creating a new environment from scratch
 
 ```bash
 $ terraform workspace new syed-py3
-$ export TF_VAR_prefix="syed-py3"
-$ export TF_VAR_rds_vpc_cidr="172.38.0.0/16"
-$ export TF_VAR_db_password="mydbpassword"
+$ terraform workspace select syed-py3
+$ oc login <login token>
+$ source envs/syed-py3.env
 $ terraform apply
 ```
 
-This command generates a `<prefix>-quay-deployment.yaml` file which you can deploy to openshift
+This command generates all the resources required and outputs `<prefix>-quay-deployment.yaml` file which you can deploy to openshift
 
 ```
 kubectl apply -f <prefix>-quay-deployment.yaml
@@ -63,22 +74,6 @@ kubectl apply -f <prefix>-quay-deployment.yaml
 This should generate all the deployments for quay.
 
 **NOTE** Terraform also generates a statefile `terraform.tfstate`. DO NOT DELETE this file or commit it. This file keeps track of all the resources on AWS assosiated with your workspace.
-
-**NOTE for python 2 deployment** When you create the deployment for python2 quay, it may not start correctly because it expects a user to be present in the DB. This has to be done manually. 
-
-```
-  File "/opt/rh/python27/root/usr/lib/python2.7/site-packages/pymysql/err.py", line 109, in raise_mysql_exception
-    raise errorclass(errno, errval)
-peewee.IntegrityError: (1048, u"Column 'account_id' cannot be null")
-```
-
-Run the following query on the quay RDS to fix the above error
-
-```
-$ mysql -h <quay-rds-host> -P 3306 -p<db-password> -u quay <  quay-py2-setup.sql
-```
-
-You can get the Quay RDS host from the `terraform output` command
 
 Once you get quay running, you can get the quay endpoint by running
 
@@ -92,7 +87,6 @@ $ kubectl get route
 You need to cleanup both openshift and terraform. 
 
 ```
-$ kubectl delete namespace <prefix>-quay
 $ terraform destroy
 ```
 

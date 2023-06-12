@@ -40,3 +40,14 @@ output "quay_hostname" {
   sensitive   = false
 }
 
+output "lb_name" {
+  description = "Quay hostname"
+  value = "${kubernetes_service.quay_lb_service.status.0.load_balancer.0.ingress.0.hostname}"
+  sensitive   = false
+}
+
+output "lb_name" {
+  description = "Quay hostname"
+  value = "${kubernetes_service.quay_lb_service.status.0.load_balancer.0.ingress.0.hostname}"
+  sensitive   = false
+}

@@ -1,6 +1,6 @@
 resource "aws_elasticache_replication_group" "quay_build_redis" {
   automatic_failover_enabled    = true
-  availability_zones            = ["us-east-1a", "us-east-1b"]
+  availability_zones            = var.redis_azs
   replication_group_id          = "${var.prefix}-build-redis-rep-group"
   replication_group_description = "${var.prefix} Replication Group"
   node_type                     = "cache.t2.small"
@@ -21,7 +21,7 @@ resource "aws_elasticache_replication_group" "quay_build_redis" {
 
 resource "aws_elasticache_subnet_group" "quay_build_redis_subnet_group" {
   name       = "${var.prefix}-build-redis-subnet"
-  subnet_ids = module.rds_vpc.public_subnets
+  subnet_ids = module.quay_vpc.public_subnets
   tags = {
     Deployment = "${var.prefix}"
   }
