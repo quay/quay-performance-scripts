@@ -14,9 +14,11 @@ resource "kubernetes_namespace" "quay_ns" {
   }
 }
 
-provider "kubernetes" {
-  config_path    = "~/.kube/config"
-  config_context = "${var.kube_context}"
+data "aws_availability_zones" "available" {}
+
+locals {
+    quay_route_endpoint = "oauth-openshift.${var.openshift_route_suffix}"
+    quay_hostname = "${var.prefix}.${data.aws_route53_zone.zone.name}"
 }
 
 data "template_file" "quay_template" {
@@ -68,8 +70,6 @@ data "template_file" "quay_template" {
 
     registry_state = local.is_secondary == 1 ? "readonly" : "normal"
   }
-}
-
 }
 
 resource "local_file" "quay_deployment" {
