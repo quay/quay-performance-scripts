@@ -27,6 +27,8 @@ class Config:
             'es_port': os.environ.get('ES_PORT'),
             'es_index': os.environ.get('ES_INDEX'),
             'push_pull_image': os.environ.get('PUSH_PULL_IMAGE'),
+            'push_pull_es_index': os.environ.get('PUSH_PULL_ES_INDEX'),
+            'push_pull_numbers': int(os.environ.get("PUSH_PULL_NUMBERS", 50)),
             'concurrency': int(os.environ.get("CONCURRENCY", 50)),
             'target_hit_size': int(os.environ.get('TARGET_HIT_SIZE')),
             'batch_size': int(os.environ.get('TEST_BATCH_SIZE', 400)),
@@ -49,11 +51,11 @@ class Config:
         assert self.config["es_port"], "ES_PORT is not set"
         assert self.config["es_index"], "ES_INDEX is not set"
         assert self.config["push_pull_image"], "PUSH_PULL_IMAGE is not set"
-        assert self.config["concurrency"], "CONCURRENCY is not set"
+        assert self.config["push_pull_es_index"], "PUSH_PULL_INDEX is not set"
+        assert self.config["push_pull_numbers"], "PUSH_PULL_NUMBERS is not set"
         assert isinstance(self.config["concurrency"], int), "CONCURRENCY is not an integer"
         assert self.config["target_hit_size"], "TARGET_HIT_SIZE is not set"
         assert isinstance(self.config["target_hit_size"], int), "TARGET_HIT_SIZE is not an integer"
-        assert self.config["batch_size"], "BATCH_SIZE is not set"
         assert isinstance(self.config["batch_size"], int), "BATCH_SIZE is not an integer"
         assert self.config["test_namespace"], "TEST_NAMESPACE is not set"
         assert self.config["base_url"], "BASE_URL is not set"

@@ -35,7 +35,7 @@ class Permissions:
                 }
                 reqs.append(request)
         target_name = "'PUT %s'" % path
-        Attacker().run_vegeta('add_teams_to_organizations', reqs, target_name=target_name)
+        Attacker().run_vegeta('add_teams_to_organizations_repos', reqs, target_name=target_name)
     
     @staticmethod
     def add_users_to_organization_repos(quay_url, org, repos, users):
