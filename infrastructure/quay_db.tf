@@ -17,6 +17,9 @@ resource "aws_db_instance" "quay_db" {
   tags = {
     Deployment = "${var.prefix}"
   }
+
+  replicate_source_db = var.deploy_type == "secondary" ? var.primary_db_arn : null
+  backup_retention_period = 5
 }
 
 resource "aws_db_parameter_group" "quay_db_prameter_group" {

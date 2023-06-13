@@ -251,6 +251,7 @@ stringData:
     ${ssl_key}
 
   config.yaml: |
+
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
     DATABASE_SECRET_KEY: db-secret-key
@@ -311,6 +312,11 @@ stringData:
       port: ${redis_port}
       ssl: false
 
+    USERFILES_LOCATION: s3_us_east_1
+    LOG_ARCHIVE_LOCATION: s3_us_east_1
+    ACTION_LOG_ARCHIVE_LOCATION: s3_us_east_1
+    BUILDMAN_HOSTNAME: ${quay_route_host}:55443
+
     BUILD_MANAGER:
     - ephemeral
     - ALLOWED_WORKER_COUNT: 5
@@ -324,7 +330,7 @@ stringData:
       - EXECUTOR: ec2
         DEBUG: True
         EC2_REGION: ${region}
-        COREOS_AMI: ami-02545325b519192df
+        COREOS_AMI: ami-04a183f7a13130882
         AWS_ACCESS_KEY: ${builder_access_key}
         AWS_SECRET_KEY: ${builder_secret_key}
         EC2_INSTANCE_TYPE: t2.large
@@ -500,6 +506,7 @@ stringData:
     ${ssl_key}
 
   config.yaml: |
+    REGISTRY_STATE=${registry_state}
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
     DATABASE_SECRET_KEY: db-secret-key
@@ -524,7 +531,6 @@ stringData:
     - s3_us_west_1
     ENTERPRISE_LOGO_URL: /static/img/quay-horizontal-color.svg
     EXTERNAL_TLS_TERMINATION: false
-    FEATURE_BUILD_SUPPORT: false
     FEATURE_DIRECT_LOGIN: true
     FEATURE_MAILING: false
     FEATURE_PROXY_STORAGE: false
