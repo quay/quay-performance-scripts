@@ -707,7 +707,7 @@ data:
                 "name": prometheus,
                 "orgId": 1,
                 "type": prometheus,
-                "url": "http://prometheus-service-monitoring.svc:8080",
+                "url": "http://prometheus-${quay_route_host}:9090",
                 "version": 1
             }
         ]

@@ -29,8 +29,13 @@ resource "kubernetes_service" "grafana_lb_service" {
       "app" = "grafana-app"
     }
     port {
-      name        = "grafana"
-      port        = 3000
+      name        = "grafana-http"
+      port        = 80
+      target_port = 3000
+    }
+    port {
+      name        = "grafana-https"
+      port        = 443
       target_port = 3000
     }
     type = "LoadBalancer"
