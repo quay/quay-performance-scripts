@@ -1,3 +1,15 @@
+terraform {
+  required_providers {
+    aws  = {
+      version = "3.47.0"
+    }
+    tls = {
+      source = "hashicorp/tls"
+      version = "3.4.0"
+    }
+  }
+}
+
 provider "aws" {
   region = var.region
   profile = var.aws_profile
@@ -69,6 +81,10 @@ data "template_file" "quay_template" {
     builder_ssh_keypair = "${var.builder_ssh_keypair}"
 
     registry_state = local.is_secondary == 1 ? "readonly" : "normal"
+
+    enable_monitoring = var.enable_monitoring
+    prometheus_image = "${var.prometheus_image}"
+    grafana_image = "${var.grafana_image}"
   }
 }
 

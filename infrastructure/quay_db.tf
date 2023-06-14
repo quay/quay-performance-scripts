@@ -3,7 +3,7 @@ resource "aws_db_instance" "quay_db" {
   instance_class         = "db.t3.micro"
   allocated_storage      = 5
   engine                 = "mysql"
-  engine_version         = "5.7.33"
+  engine_version         = "5.7.41"
   name                   = "quay"
   username               = "quay"
   password               = var.db_password

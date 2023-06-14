@@ -129,3 +129,21 @@ variable "redis_azs" {
   type = list
   default = ["us-east-1a", "us-east-1b"]
 }
+
+variable "enable_monitoring" {
+  description = "enable prometheus/grafana monitoring for quay"
+  type = bool
+  default = false
+}
+
+variable "prometheus_image" {
+  description = "image for prometheus container"
+  type = string
+  default = "prom/prometheus"
+}
+
+variable "grafana_image" {
+  description = "image for grafana container"
+  type = string
+  default = "grafana/grafana"
+}

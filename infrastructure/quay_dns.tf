@@ -21,4 +21,3 @@ resource "aws_route53_record" "quay_hostname" {
   records = ["${kubernetes_service.quay_lb_service.status.0.load_balancer.0.ingress.0.hostname}"]
 }
 
-
