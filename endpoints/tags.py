@@ -37,7 +37,7 @@ class Tags:
             return ''
 
     @staticmethod
-    def list_tags(quay_url, quay_host, users):
+    def list_tags(quay_url, quay_host, users, repo):
         """
         List all tags for all given user repos.
         We query it on top of the tags created in the load phase.
@@ -45,28 +45,27 @@ class Tags:
         :param quay_url: quay host base url
         :param quay_host: quay host name
         :param users: list of usernames
+        :param repo: repo to scan for tags
         :return: None
         """
         print_header('Listing tags for given users repos')
         test_name = 'list_tags_for_user_repos'
-        list_of_repos = ['repo_with_100_tags']
 
         reqs = []
         for user in users:
-            for repo in list_of_repos:
-                path = '/v2/%s/%s/tags/list' % (user, repo)
-                url = quay_url + path
-                token = Tags.fetch_repo_tokens(quay_host, user, repo)
-                headers = {
-                    "Content-Type": ["application/json"],
-                    "Authorization": [f"Bearer {token}"]
-                }
-                request = {
-                    "url": url,
-                    "method": "GET",
-                    "header": headers,
-                }
-                reqs.append(request)
+            path = '/v2/%s/%s/tags/list' % (user, repo)
+            url = quay_url + path
+            token = Tags.fetch_repo_tokens(quay_host, user, repo)
+            headers = {
+                "Content-Type": ["application/json"],
+                "Authorization": [f"Bearer {token}"]
+            }
+            request = {
+                "url": url,
+                "method": "GET",
+                "header": headers,
+            }
+            reqs.append(request)
         target_name = "'GET %s'" % path
         Attacker().run_vegeta(test_name, reqs, target_name=target_name)
 

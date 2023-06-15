@@ -144,6 +144,7 @@ def podman_create(tags):
             elapsed_time = end_time - start_time
             data = {
                 'tag': tag,
+                'targets': "image_pushes",
                 'elapsed_time': elapsed_time.total_seconds(),
                 'start_time': start_time,
                 'end_time': end_time,
@@ -163,7 +164,6 @@ def podman_create(tags):
     # Write data to Elasticsearch
     logging.info("Writing 'registry push' results to Elasticsearch")
     es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
-    index = 'quay-push-results'
     docs = []
     for result in results:
 
@@ -174,7 +174,7 @@ def podman_create(tags):
 
         # Create an Elasticsearch Doc
         doc = {
-            '_index': index,
+            '_index': env_config["push_pull_es_index"],
             'type': '_doc',
             '_source': result
         }
@@ -266,6 +266,7 @@ def podman_pull(tags):
             elapsed_time = end_time - start_time
             data = {
                 'tag': tag,
+                'targets': "image_pulls",
                 'elapsed_time': elapsed_time.total_seconds(),
                 'start_time': start_time,
                 'end_time': end_time,
@@ -286,7 +287,6 @@ def podman_pull(tags):
     # Write data to Elasticsearch
     logging.info("Writing 'registry pull' results to Elasticsearch")
     es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
-    index = 'quay-pull-results'
     docs = []
     for result in results:
 
@@ -297,7 +297,7 @@ def podman_pull(tags):
 
         # Create an Elasticsearch Doc
         doc = {
-            '_index': index,
+            '_index': env_config["push_pull_es_index"],
             'type': '_doc',
             '_source': result
         }
@@ -391,6 +391,8 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='CONCURRENCY', value=str(concurrency)),
         client.V1EnvVar(name='TARGET_HIT_SIZE', value=str(target_hit_size)),
         client.V1EnvVar(name='PUSH_PULL_IMAGE', value=image),
+        client.V1EnvVar(name='PUSH_PULL_ES_INDEX', value=env_config["push_pull_es_index"]),
+        client.V1EnvVar(name='PUSH_PULL_NUMBERS', value=str(env_config["push_pull_numbers"])),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
         client.V1EnvVar(name='TEST_NAMESPACE', value=namespace),
         client.V1EnvVar(name='QUAY_OAUTH_TOKEN', value=token),
@@ -462,6 +464,8 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='CONCURRENCY', value=str(concurrency)),
         client.V1EnvVar(name='TARGET_HIT_SIZE', value=str(target_hit_size)),
         client.V1EnvVar(name='PUSH_PULL_IMAGE', value=image),
+        client.V1EnvVar(name='PUSH_PULL_ES_INDEX', value=env_config["push_pull_es_index"]),
+        client.V1EnvVar(name='PUSH_PULL_NUMBERS', value=str(env_config["push_pull_numbers"])),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
         client.V1EnvVar(name='TEST_NAMESPACE', value=namespace),
         client.V1EnvVar(name='QUAY_OAUTH_TOKEN', value=token),
@@ -639,7 +643,7 @@ if __name__ == '__main__':
 
     # Create repositories which will contain a specified number of tags when the
     # registry operation tests are performed.
-    repo_sizes = (100,)
+    repo_sizes = (env_config["push_pull_numbers"],)
     repos_with_data = ['repo_with_%s_tags' % n for n in repo_sizes]
     repos.extend(repos_with_data)  # Create these while running tests
 
@@ -734,7 +738,7 @@ if __name__ == '__main__':
         Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
         Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
         Tags.get_catalog(env_config['base_url'], env_config["target_hit_size"])
-        Tags.list_tags(env_config['base_url'], env_config['quay_host'], users)
+        Tags.list_tags(env_config['base_url'], env_config['quay_host'], users, "repo_with_" + str(env_config["push_pull_numbers"]) + "_tags")
         end_time = datetime.datetime.utcnow()
         logging.info(f"Ending run phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
         elapsed_time = end_time - start_time
@@ -751,7 +755,7 @@ if __name__ == '__main__':
         Permissions.delete_users_of_organization_repos(env_config['base_url'], organization, repos, users)
         Teams.delete_team_members(env_config['base_url'], organization, teams, users)
         Teams.delete_teams(env_config['base_url'], organization, teams)
-        Tags.delete_repository_tags(env_config['base_url'], organization, "repo_with_100_tags", tags, env_config["target_hit_size"])
+        Tags.delete_repository_tags(env_config['base_url'], organization, "repo_with_" + str(env_config["push_pull_numbers"]) + "_tags", tags, env_config["target_hit_size"])
         Repositories.delete_repositories(env_config['base_url'], organization, repos)
         Users.delete_users(env_config['base_url'], users)
         end_time = datetime.datetime.utcnow()

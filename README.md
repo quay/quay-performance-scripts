@@ -48,6 +48,8 @@ Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshi
 * `ES_PORT` - String. Elastic search port number.
 * `ES_INDEX` - String. Elastic search index to store the results.
 * `PUSH_PULL_IMAGE` - Image which contains source code and used in push/pull jobs for testing purposes. `quay-load` in our case.
+* `PUSH_PUSH_ES_INDEX` - ES index to store quay push/pull results. It is separate as it follows different document structure.
+* `PUSH_PULL_NUMBERS` - The amount of images to do push/pull operations on.
 * `TARGET_HIT_SIZE` - String. Indicates the total amount of requests to hit the system with.
 * `CONCURRENCY` - String. Indicates the rate(concurrency) at which the requests hits must happen in parallel.
 * `TEST_NAMESPACE` - String. Namespace in which testing needs to be done.
@@ -91,7 +93,7 @@ GET /api/v1/repository/test/repo_1/permissions/team/team_1 # get_teams_of_organi
 GET /api/v1/repository/test/repo_1/permissions/user/user_1 # get_users_of_organizations_repos method  
 
 ### Image push/pulls
-Unfortunately we don’t have any APIs to hit at this moment. So those are tested using podman commands. For n objects we will be creating n jobs representing n users who will be uploading images in parallel with python multiprocessing implemented. Each job uploads and downloads 100 images.
+Unfortunately we don’t have any APIs to hit at this moment. So those are tested using podman commands. For n objects we will be creating n jobs representing n users who will be uploading images in parallel with python multiprocessing implemented. Each job uploads and downloads specified number of images (i.e PUSH_PULL_NUMBERS which has default value of 50).
 
 ### DELETE PHASE  
 > **NOTE**: n is number of objects/requests here

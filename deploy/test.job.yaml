@@ -86,6 +86,10 @@ spec:
             value: <es-index>
           - name: PUSH_PULL_IMAGE
             value: <image-for-testing>
+          - name: PUSH_PULL_ES_INDEX
+            value: <push-pull-es-index>
+          - name: PUSH_PULL_NUMBERS
+            value: <number-of-push-pull-images>
           - name: TARGET_HIT_SIZE
             value: <hit-size>
           - name: CONCURRENCY
