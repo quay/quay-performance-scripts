@@ -260,6 +260,7 @@ stringData:
 
   config.yaml: |
 
+    REGISTRY_STATE: ${registry_state}
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
     DATABASE_SECRET_KEY: db-secret-key
@@ -704,10 +705,10 @@ data:
             {
                 "access": "proxy",
                 "editable": true,
-                "name": prometheus,
+                "name": quay-prometheus,
                 "orgId": 1,
                 "type": prometheus,
-                "url": "http://prometheus-${quay_route_host}:9090",
+                "url": "http://${prometheus_host}:9090",
                 "version": 1
             }
         ]

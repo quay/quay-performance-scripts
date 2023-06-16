@@ -46,9 +46,9 @@ output "prometheus_hostname" {
   sensitive = false
 }
 
-output "prometheus_lb" {
-  description = "Prometheus loadbalancer"
-  value = var.enable_monitoring ? "${kubernetes_service.prometheus_lb_service[0].status.0.load_balancer.0.ingress.0.hostname}" : null
+output "grafana_hostname" {
+  description = "Grafana hostname"
+  value = var.enable_monitoring ? "grafana-${var.prefix}.${data.aws_route53_zone.zone.name}" : null
   sensitive = false
 
 }

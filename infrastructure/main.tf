@@ -85,6 +85,7 @@ data "template_file" "quay_template" {
     enable_monitoring = var.enable_monitoring
     prometheus_image = "${var.prometheus_image}"
     grafana_image = "${var.grafana_image}"
+    prometheus_host = var.enable_monitoring ? "prometheus-${var.prefix}.${data.aws_route53_zone.zone.name}" : ""
   }
 }
 
