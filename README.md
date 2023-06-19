@@ -107,3 +107,39 @@ DELETE /api/v1/organization/test/team/team_1/members/member_1 # delete_team_memb
 DELETE /api/v1/repository/test/repo_1/permissions/team/team_1 # delete_teams_of_organizations_repos method  
 DELETE /api/v1/repository/test/repo_1/permissions/user/user_1 # delete_users_of_organizations_repos method  
 DELETE /api/v1/repository/test/repo_1/tag/tag_1 # delete_repository_tags method  
+
+## **Profiling**
+### **PostgresDB Profiling**
+In order to perform low overhead database profiling we will be using [pgBadger](https://github.com/darold/pgbadger). Below are the steps to do profiling on postgresDB.
+
+* **Step 1**: Login to the postgres DB and modify the postgres.conf in `/var/lib/postgresql/data/` with below flags (or can be modified according to our own use case).
+```
+log_checkpoints = on
+log_connections = on
+log_disconnections = on
+log_lock_waits = on
+log_temp_files = 0
+log_autovacuum_min_duration = 0
+log_error_verbosity = default
+log_destination = 'csvlog'
+logging_collector = on
+log_rotation_age = 1d
+log_rotation_size = 0
+log_truncate_on_rotation = on
+log_min_duration_statement = 0
+log_min_messages = debug1
+```
+
+* **Step 2**: Once after modifying the config restart the db using the below command
+```
+pg_ctl restart -D /var/lib/postgresql/data
+```
+
+* **Step 3**: Now we should be able to find the logs in `/var/lib/postgresql/data/log/`. Copy those logs to the location where `pgBadger` binary is installed.
+
+* **Step 4**: Then execute the below command to process those logs and get an html report. For more details on usage of `pgBadger`, refer [here](https://github.com/darold/pgbadger#table-of-contents).
+```
+pgbadger -j 8 ~/output/postgresql-2023-06-18_141703.csv -o /home/vchalla/output/output.html --format html
+```
+
+> **NOTE**: It is suggested to disable logs collector once we do the profiling to avoid overhead created by logs files getting accumulating in the DB.
