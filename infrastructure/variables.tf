@@ -147,3 +147,15 @@ variable "grafana_image" {
   type = string
   default = "grafana/grafana"
 }
+
+variable "quay_db_version" {
+  description = "version of quay's database"
+  type = string
+  default = "5.7.41"
+}
+
+variable "clair_db_version" {
+  description = "version of clair's database"
+  type = string
+  default = "14.2"
+}
