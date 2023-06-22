@@ -107,3 +107,8 @@ DELETE /api/v1/organization/test/team/team_1/members/member_1 # delete_team_memb
 DELETE /api/v1/repository/test/repo_1/permissions/team/team_1 # delete_teams_of_organizations_repos method  
 DELETE /api/v1/repository/test/repo_1/permissions/user/user_1 # delete_users_of_organizations_repos method  
 DELETE /api/v1/repository/test/repo_1/tag/tag_1 # delete_repository_tags method  
+
+## **Profiling**
+### **Application Level Profiling**
+Inorder to perform application level profiling we use [pyroscope](https://pyroscope.io/docs/). To install pyroscope onto your cluster, deploy `assets/pyroscope-server.yaml`. Now wait until the pods are up and running in the `pyroscope` namespace. For other installation methods please refer [this](https://pyroscope.io/docs/server-install-macos/).   
+Once pyroscope is ready, we should be able to logon to the pyroscope route in the `pyroscope` namespace and view the application level profiling data using the tags applied as filters. Please refer to this [tutorial](https://github.com/grafana/pyroscope/tree/main/examples/python/rideshare) and live [demo](https://demo.pyroscope.io/explore?query=rideshare-app-python.cpu%7B%7D&groupBy=region&groupByValue=All) for more details on integration.
