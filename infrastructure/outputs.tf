@@ -40,6 +40,19 @@ output "quay_hostname" {
   sensitive   = false
 }
 
+output "prometheus_hostname" {
+  description = "Prometheus hostname"
+  value = var.enable_monitoring ? "prometheus-${var.prefix}.${data.aws_route53_zone.zone.name}" : null
+  sensitive = false
+}
+
+output "grafana_hostname" {
+  description = "Grafana hostname"
+  value = var.enable_monitoring ? "grafana-${var.prefix}.${data.aws_route53_zone.zone.name}" : null
+  sensitive = false
+
+}
+
 output "lb_name" {
   description = "Quay hostname"
   value = "${kubernetes_service.quay_lb_service.status.0.load_balancer.0.ingress.0.hostname}"

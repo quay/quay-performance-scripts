@@ -74,4 +74,28 @@ resource "aws_alb_target_group" "quay_alb_grpc_target_group" {
   }
 }
 
+resource "aws_alb_listener" "quay_alb_metrics_listener" {
+  load_balancer_arn = aws_lb.quay_alb.arn
+  port              = "9091"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate.quay_domain_cert.arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.quay_alb_grpc_target_group.arn
+  }
+}
+
+resource "aws_alb_target_group" "quay_alb_metrics_target_group" {
+  name     = "${var.prefix}-alb-metrics-tg"
+  port     = "9091"
+  protocol = "HTTPS"
+  target_type = "ip"
+  vpc_id   = module.quay_vpc.vpc_id
+  health_check {
+     port = 443
+  }
+}
+
 /* TODO: Add IPs of ELB automatically to the target group */
