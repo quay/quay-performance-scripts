@@ -28,6 +28,11 @@ resource "kubernetes_service" "quay_lb_service" {
       port        = 55443
       target_port = 55443
     }
+    port {
+      name        = "metrics"
+      port        = 9091
+      target_port = 9091
+    }
 
     type = "LoadBalancer"
   }

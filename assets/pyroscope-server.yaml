@@ -1,0 +1,47 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pyroscope
+  namespace: pyroscope
+  labels:
+    app: pyroscope
+spec:
+  containers:
+    - name: pyroscope
+      image: pyroscope/pyroscope
+      env:
+        - name: PYROSCOPE_LOG_LEVEL
+          value: debug
+      ports:
+        - containerPort: 4040
+      command:
+        - /usr/bin/pyroscope
+        - server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope
+  namespace: pyroscope
+spec:
+  selector:
+    app: pyroscope
+  ports:
+    - protocol: TCP
+      port: 4040
+      targetPort: 4040
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pyroscope
+  namespace: pyroscope
+spec:
+  to:
+    kind: Service
+    name: pyroscope
+  port:
+    targetPort: 4040
+  wildcardPolicy: None

@@ -181,6 +181,10 @@ spec:
       protocol: TCP
       port: 55443
       targetPort: 55443
+    - name: metrics
+      protocol: TCP
+      port: 9091
+      targetPort: 9091
   selector:
     quay-component: quay-app
 ---
@@ -210,6 +214,10 @@ spec:
       protocol: TCP
       port: 55443
       targetPort: 55443
+    - name: metrics
+      protocol: TCP
+      port: 9091
+      targetPort: 9091
   selector:
     quay-component: quay-app
 ---
@@ -252,6 +260,7 @@ stringData:
 
   config.yaml: |
 
+    REGISTRY_STATE: ${registry_state}
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
     DATABASE_SECRET_KEY: db-secret-key
@@ -373,6 +382,10 @@ spec:
       protocol: TCP
       port: 55443
       targetPort: 55443
+    - name: metrics
+      protocol: TCP
+      port: 9091
+      targetPort: 9091
   selector:
     quay-component: quay-app
 ---
@@ -506,7 +519,7 @@ stringData:
     ${ssl_key}
 
   config.yaml: |
-    REGISTRY_STATE=${registry_state}
+    REGISTRY_STATE: ${registry_state}
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
     DATABASE_SECRET_KEY: db-secret-key
@@ -524,6 +537,8 @@ stringData:
         s3_access_key: ${s3_access_key_id}
         s3_secret_key: ${s3_secret_key}
         s3_bucket: ${s3_bucket_name}
+        s3_region: us-east-1
+        cloudfront_distribution_org_overrides: {}
         storage_path: "/images"
     DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS:
     - s3_us_west_1
@@ -614,4 +629,124 @@ stringData:
         dogstatsd:
             url: ""
 
+%{ endif }
+
+%{ if enable_monitoring}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: ${namespace}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      - job_name: 'quay'
+        static_configs:
+          - targets: ["${quay_route_host}:9091"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: ${namespace}
+  labels:
+    app: prometheus-app
+spec: 
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-app
+  template:
+    metadata:
+      labels:
+        app: prometheus-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      containers:
+      - name: prometheus
+        image: ${prometheus_image}
+        args:
+          - '--storage.tsdb.retention=6h'
+          - '--storage.tsdb.path=/prometheus'
+          - '--config.file=/etc/prometheus/prometheus.yml'
+        ports:
+          - name: web
+            containerPort: 9090
+        volumeMounts:
+          - name: prometheus-config-volume
+            mountPath: /etc/prometheus
+          - name: prometheus-storage-volume
+            mountPath: /prometheus/
+      restartPolicy: Always
+      volumes:
+      - name: prometheus-config-volume
+        configMap:
+          defaultMode: 420
+          name: prometheus-config
+      - name: prometheus-storage-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: "${namespace}"
+data:
+  prometheus.yaml: |-
+    {
+        "apiVersion": 1,
+        "datasources": [
+            {
+                "access": "proxy",
+                "editable": true,
+                "name": quay-prometheus,
+                "orgId": 1,
+                "type": prometheus,
+                "url": "http://${prometheus_host}:9090",
+                "version": 1
+            }
+        ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: "${namespace}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-app
+  template:
+    metadata:
+      name: grafana-app
+      labels:
+        app: grafana-app
+    spec:
+      containers:
+      - name: grafana
+        image: ${grafana_image}
+        ports:
+          - name: grafana
+            containerPort: 3000
+        volumeMounts:
+          - mountPath: /var/lib/grafana
+            name: grafana-storage
+          - mountPath: /etc/grafana/provisioning/datasources
+            name: grafana-datasources
+            readOnly: false
+      volumes:
+        - name: grafana-storage
+          emptyDir: {}
+        - name: grafana-datasources
+          configMap:
+            defaultMode: 420
+            name: grafana-datasources
 %{ endif }
