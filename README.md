@@ -129,7 +129,7 @@ log_lock_waits = on
 log_temp_files = 0
 log_autovacuum_min_duration = 0
 log_error_verbosity = default
-log_destination = 'csvlog'
+log_destination = 'stderr'
 logging_collector = on
 log_rotation_age = 1d
 log_rotation_size = 0
@@ -147,7 +147,7 @@ pg_ctl restart -D /var/lib/postgresql/data
 
 * **Step 4**: Then execute the below command to process those logs and get an html report. For more details on usage of `pgBadger`, refer [here](https://github.com/darold/pgbadger#table-of-contents).
 ```
-pgbadger -j 8 ~/output/postgresql-2023-06-18_141703.csv -o /home/vchalla/output/output.html --format html
+pgbadger -j 8 ~/output/postgresql-2023-06-18_141703.log -o /home/vchalla/output/output.html --format html
 ```
 
 > **NOTE**: It is suggested to disable logs collector once we do the profiling to avoid overhead created by logs files getting accumulating in the DB.
