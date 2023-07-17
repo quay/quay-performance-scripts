@@ -96,6 +96,8 @@ spec:
             value: <concurrency>
           - name: TEST_NAMESPACE
             value: <test-namespace>
+          - name: TEST_PHASES
+            value: "LOAD,RUN,DELETE"
         resources:
           requests:
             cpu: "1"
