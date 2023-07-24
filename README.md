@@ -19,7 +19,7 @@ The test suite is designed to run on openshift platform using a simple configura
   purposes. Within that application, create an OAuth Token with all
   permissions (checkboxes) granted. Hold on to this token as it will be used
   later.
-- Once after the quay application is deployed. Do a `pd_dump` in the quay postgres pod to capture the initial snapshot into a sql file and keep it copied at `assets/quaydb.sql`.
+- Once after the quay application is deployed. Do a `pg_dump` in the quay postgres pod to capture the initial snapshot into a sql file and keep it copied at `assets/quaydb.sql`.
 
 ## Running tests
 
@@ -47,7 +47,7 @@ Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshi
 * `ES_HOST` - String. Elastic search host url.
 * `ES_PORT` - String. Elastic search port number.
 * `ES_INDEX` - String. Elastic search index to store the results.
-* `PUSH_PULL_IMAGE` - Image which contains source code and used in push/pull jobs for testing purposes. `quay-load` in our case.
+* `PUSH_PULL_IMAGE` - Image which contains source code and used in push/pull jobs for testing purposes. Same image that is used for load testing i.e `quay-load` in our case.
 * `PUSH_PUSH_ES_INDEX` - ES index to store quay push/pull results. It is separate as it follows different document structure.
 * `PUSH_PULL_NUMBERS` - The amount of images to do push/pull operations on.
 * `TARGET_HIT_SIZE` - String. Indicates the total amount of requests to hit the system with.
@@ -120,7 +120,7 @@ Once parca is ready, we should be able to logon to the parca route in the `parca
 ### **PostgresDB Profiling**
 In order to perform low overhead database profiling we will be using [pgBadger](https://github.com/darold/pgbadger). Below are the steps to do profiling on postgresDB.
 
-* **Step 1**: Login to the postgres DB and modify the postgres.conf in `/var/lib/postgresql/data/` with below flags (or can be modified according to our own use case).
+* **Step 1**: Login to the postgres DB and modify the postgres.conf in `/var/lib/pgsql/data/userdata/` with below flags (or can be modified according to our own use case).
 ```
 log_checkpoints = on
 log_connections = on
@@ -140,10 +140,10 @@ log_min_messages = debug1
 
 * **Step 2**: Once after modifying the config restart the db using the below command
 ```
-pg_ctl restart -D /var/lib/postgresql/data
+pg_ctl restart -D /var/lib/pgsql/data/userdata
 ```
 
-* **Step 3**: Now we should be able to find the logs in `/var/lib/postgresql/data/log/`. Copy those logs to the location where `pgBadger` binary is installed.
+* **Step 3**: Now we should be able to find the logs in `/var/lib/pgsql/data/userdata/log/`. Copy those logs to the location where `pgBadger` binary is installed.
 
 * **Step 4**: Then execute the below command to process those logs and get an html report. For more details on usage of `pgBadger`, refer [here](https://github.com/darold/pgbadger#table-of-contents).
 ```
