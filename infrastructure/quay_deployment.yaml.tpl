@@ -188,39 +188,6 @@ spec:
   selector:
     quay-component: quay-app
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: quay-app-lb
-  namespace: ${namespace}
-  labels:
-    quay-component: quay-app
-spec:
-  type: LoadBalancer
-  ports:
-    - protocol: TCP
-      name: https
-      port: 443
-      targetPort: 8443
-    - protocol: TCP
-      name: http
-      port: 80
-      targetPort: 8080
-    - name: jwtproxy
-      protocol: TCP
-      port: 8081
-      targetPort: 8081
-    - name: grpc
-      protocol: TCP
-      port: 55443
-      targetPort: 55443
-    - name: metrics
-      protocol: TCP
-      port: 9091
-      targetPort: 9091
-  selector:
-    quay-component: quay-app
----
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -355,39 +322,6 @@ stringData:
         MAX_LIFETIME_S: 3600
 
 %{ if  enable_clair }    
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: quay-app-lb
-  namespace: ${namespace}
-  labels:
-    quay-component: quay-app
-spec:
-  type: LoadBalancer
-  ports:
-    - protocol: TCP
-      name: https
-      port: 443
-      targetPort: 8443
-    - protocol: TCP
-      name: http
-      port: 80
-      targetPort: 8080
-    - name: jwtproxy
-      protocol: TCP
-      port: 8081
-      targetPort: 8081
-    - name: grpc
-      protocol: TCP
-      port: 55443
-      targetPort: 55443
-    - name: metrics
-      protocol: TCP
-      port: 9091
-      targetPort: 9091
-  selector:
-    quay-component: quay-app
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -571,6 +505,45 @@ stringData:
       host: ${redis_host}
       port: ${redis_port}
       ssl: false
+
+    FEATURE_BUILD_SUPPORT: True
+    BUILDLOGS_REDIS:
+      host: ${redis_host}
+      port: ${redis_port}
+      ssl: false
+
+    USERFILES_LOCATION: s3_us_east_1
+    LOG_ARCHIVE_LOCATION: s3_us_east_1
+    ACTION_LOG_ARCHIVE_LOCATION: s3_us_east_1
+    BUILDMAN_HOSTNAME: ${quay_route_host}:55443
+
+    BUILD_MANAGER:
+    - ephemeral
+    - ALLOWED_WORKER_COUNT: 5
+      ORCHESTRATOR_PREFIX: buildman/dev/
+      ORCHESTRATOR:
+        REDIS_HOST: ${redis_host}
+        REDIS_SSL: false
+        REDIS_SKIP_KEYSPACE_EVENT_SETUP: true
+
+      EXECUTORS:
+      - EXECUTOR: ec2
+        DEBUG: True
+        EC2_REGION: ${region}
+        COREOS_AMI: ami-04a183f7a13130882
+        AWS_ACCESS_KEY: ${builder_access_key}
+        AWS_SECRET_KEY: ${builder_secret_key}
+        EC2_INSTANCE_TYPE: t2.large
+        EC2_VPC_SUBNET_ID: ${builder_subnet_id}
+        EC2_SECURITY_GROUP_IDS:
+        - ${builder_security_group_id}
+        EC2_KEY_NAME: ${builder_ssh_keypair}
+        WORKER_IMAGE: quay.io/projectquay/quay-builder
+        WORKER_TAG: master
+        VOLUME_SIZE: 52G # Size in truncate notation for the BTRFS volume
+        BLOCK_DEVICE_SIZE: 58
+        SETUP_TIME: 180
+        MAX_LIFETIME_S: 3600
 ---
 apiVersion: v1
 kind: Secret

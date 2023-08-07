@@ -2,3 +2,8 @@ newjob.yaml
 __pycache__/
 venv/
 .idea/
+infrastructure/temp/
+infrastructure/*.tfstate*
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
+infrastructure/*_quay_deployment.yaml

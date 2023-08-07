@@ -2,6 +2,9 @@ resource "kubernetes_service" "quay_lb_service" {
   metadata {
     name = "${var.prefix}-quay-lb"
     namespace = "${kubernetes_namespace.quay_ns.metadata[0].name}"
+    annotations = {
+      "service.beta.kubernets.io/aws-load-balancer-name" = "${var.prefix}-quay-lb"
+    }
   }
 
   spec {
@@ -37,3 +40,4 @@ resource "kubernetes_service" "quay_lb_service" {
     type = "LoadBalancer"
   }
 }
+

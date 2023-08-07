@@ -22,6 +22,12 @@ variable "region" {
   default = "us-east-1"
 }
 
+variable "primary_s3_bucket_name" {
+  description = "Name of the primary bucket"
+  type = string
+  default = ""
+}
+
 variable "primary_s3_bucket_arn" {
   description = "ARN of the primary bucket"
   type = string
@@ -158,4 +164,10 @@ variable "clair_db_version" {
   description = "version of clair's database"
   type = string
   default = "14.2"
+}
+
+variable "email_address" {
+  description = "email address used for acme challenge"
+  type = string
+  default = "mkok@example.com"
 }

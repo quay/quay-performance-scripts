@@ -1,11 +1,15 @@
 terraform {
   required_providers {
     aws  = {
-      version = "3.47.0"
+      version = "5.10.0"
     }
     tls = {
       source = "hashicorp/tls"
       version = "3.4.0"
+    }
+    acme = {
+      source = "vancluever/acme"
+      version = "~> 2.0"
     }
   }
 }
@@ -30,7 +34,7 @@ data "aws_availability_zones" "available" {}
 
 locals {
     quay_route_endpoint = "oauth-openshift.${var.openshift_route_suffix}"
-    quay_hostname = "${var.prefix}.${data.aws_route53_zone.zone.name}"
+    quay_hostname = var.dns_domain == null ? var.dns_domain : "${var.prefix}.${data.aws_route53_zone.zone.name}"
 }
 
 data "template_file" "quay_template" {
@@ -60,8 +64,8 @@ data "template_file" "quay_template" {
     cloudfront_key_id = "${aws_cloudfront_public_key.quay_cloudfront_public_key.id}"
     cloudfront_distribution_domain = "${aws_cloudfront_distribution.s3_distribution.domain_name}"
 
-    ssl_key = "${indent(4, tls_private_key.quay_lb_cert_key.private_key_pem)}"
-    ssl_cert = "${indent(4, tls_self_signed_cert.quay_lb_cert.cert_pem)}"
+    ssl_key = "${indent(4, acme_certificate.quay_cert.private_key_pem)}"
+    ssl_cert = "${indent(4, acme_certificate.quay_cert.certificate_pem)}"
 
     enable_clair = var.enable_clair
     clair_image = "${var.clair_image}"
