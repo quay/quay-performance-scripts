@@ -711,12 +711,7 @@ if __name__ == '__main__':
     }
     start_time = datetime.datetime.utcnow()
     logging.info(f"Starting image push/pulls (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
-    users_copy = users[:]
-    while len(users_copy) > env_config["concurrency"]:
-        users_copy_chunck = users_copy[0: env_config["concurrency"]]
-        batch_process(users_copy_chunck, batch_args)
-        users_copy = users_copy[env_config["concurrency"]:]
-    batch_process(users_copy, batch_args)
+    batch_process([users[0]], batch_args)
     end_time = datetime.datetime.utcnow()
     logging.info(f"Ending image push/pulls (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
     elapsed_time = end_time - start_time
@@ -738,7 +733,7 @@ if __name__ == '__main__':
         Permissions.get_users_of_organization_repos(env_config['base_url'], organization, repos, users)
         Permissions.list_users_of_organization_repos(env_config['base_url'], organization, repos)
         Tags.get_catalog(env_config['base_url'], env_config["target_hit_size"])
-        Tags.list_tags(env_config['base_url'], env_config['quay_host'], users, "repo_with_" + str(env_config["push_pull_numbers"]) + "_tags")
+        Tags.list_tags(env_config['base_url'], env_config['quay_host'], [users[0]], "repo_with_" + str(env_config["push_pull_numbers"]) + "_tags")
         end_time = datetime.datetime.utcnow()
         logging.info(f"Ending run phase (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
         elapsed_time = end_time - start_time

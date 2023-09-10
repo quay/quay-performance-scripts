@@ -48,7 +48,7 @@ class Tags:
         :param repo: repo to scan for tags
         :return: None
         """
-        print_header('Listing tags for given users repos')
+        print_header("Running: List tags for given user repos")
         test_name = 'list_tags_for_user_repos'
 
         reqs = []
