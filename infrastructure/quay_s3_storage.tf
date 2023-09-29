@@ -1,5 +1,10 @@
 locals {
-  is_secondary = var.deploy_type == "secondary" ? 1 : 0
+  is_secondary = "${var.deploy_type}" == "secondary" ? 1 : 0
+}
+
+provider "aws" {
+  alias = "primary"
+  region = "us-east-1"
 }
 
 resource "aws_s3_bucket" "quay_s3_storage" {
@@ -23,66 +28,65 @@ resource "aws_s3_bucket" "quay_s3_storage" {
   }
 }
 
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
 resource "aws_iam_role" "replication" {
   name = "${var.prefix}-iam-role-replication"
   count = local.is_secondary
-  assume_role_policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "s3.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
-POLICY
+
+data "aws_iam_policy_document" "replication" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:GetReplicationConfiguration",
+      "s3:ListBucket",
+    ]
+
+    resources = ["${var.primary_s3_bucket_arn}"]
+  }
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObjectVersionForReplication",
+      "s3:GetObjectVersionAcl",
+      "s3:GetObjectVersionTagging"
+    ]
+
+    resources = ["${var.primary_s3_bucket_arn}/*"]
+  }
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:ReplicateObject",
+      "s3:ReplicateDelete",
+      "s3:ReplicateTags"
+    ]
+
+    resources = ["${aws_s3_bucket.quay_s3_storage.arn}/*"]
+  }
 }
 
 resource "aws_iam_policy" "replication" {
   name = "${var.prefix}-iam-role-policy-replication"
   count = local.is_secondary
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-        "s3:GetReplicationConfiguration",
-        "s3:ListBucket"
-      ],
-      "Effect": "Allow",
-      "Resource": [
-        "${var.primary_s3_bucket_arn}"
-      ]
-    },
-    {
-      "Action": [
-        "s3:GetObjectVersionForReplication",
-        "s3:GetObjectVersionAcl",
-         "s3:GetObjectVersionTagging"
-      ],
-      "Effect": "Allow",
-      "Resource": [
-        "${var.primary_s3_bucket_arn}/*"
-      ]
-    },
-    {
-      "Action": [
-        "s3:ReplicateObject",
-        "s3:ReplicateDelete",
-        "s3:ReplicateTags"
-      ],
-      "Effect": "Allow",
-      "Resource": "${aws_s3_bucket.quay_s3_storage.arn}/*"
-    }
-  ]
-}
-POLICY
+  policy = data.aws_iam_policy_document.replication.json
 }
 
 resource "aws_iam_role_policy_attachment" "replication" {
@@ -90,3 +94,19 @@ resource "aws_iam_role_policy_attachment" "replication" {
   policy_arn = aws_iam_policy.replication[0].arn
   count = local.is_secondary
 } 
+
+resource "aws_s3_bucket_replication_configuration" "replication" {
+  provider = aws.primary
+  count = local.is_secondary
+  role = aws_iam_role.replication[0].arn
+  bucket = var.primary_s3_bucket_name
+
+  rule {
+    id = "quay-replication"
+    status = "Enabled"
+    destination {
+      bucket = aws_s3_bucket.quay_s3_storage.arn
+      storage_class = "STANDARD"
+    }
+  }
+}

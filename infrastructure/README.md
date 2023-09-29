@@ -49,6 +49,10 @@ $ terraform workspace select dev-py3
     * `builder_ssh_keypair`: SSH Keypair created to access the build VMs (should be created prior to deploy)
     * `builder_access_key`: AWS access key for builder. Used to createEC2 VMs for building
     * `builder_secret_key`: AWS Secret key for builder. Used to createEC2 VMs for building
+    * `enable_monitoring`: Bool that indicates whether prometheus/grafana pods are in your openshift deployment
+    * `prometheus_image`: Image for prometheus container if enabling monitoring
+    * `grafana_image`: Image for grafana container if enabling monitoring
+    * `email_address`: Email address used for letsencrypt registration
 
 The easiest way to get started is to use the provided environment variable samples in the `envs` directory
 

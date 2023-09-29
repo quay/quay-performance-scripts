@@ -1,6 +1,6 @@
 module "quay_vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "2.77.0"
+  version = "5.1.1"
 
   name                 = "${var.prefix}-vpc"
   cidr                 = "${var.quay_vpc_cidr}"
@@ -21,16 +21,6 @@ data "http" "self_public_ip" {
 
 data "aws_vpc" "openshift_vpc" {
   id = var.openshift_vpc_id
-}
-
-resource "aws_db_subnet_group" "db_subnet" {
-  name       = "${var.prefix}-subnet"
-  subnet_ids = module.quay_vpc.public_subnets
-
-  tags = {
-    Environment = "${var.prefix}"
-  }
-
 }
 
 resource "aws_db_subnet_group" "db_subnet_group" {
@@ -142,6 +132,13 @@ resource "aws_security_group" "db_security_group" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  egress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = {
     Environment = "${var.prefix}"
@@ -166,17 +163,8 @@ resource "aws_vpc_peering_connection" "rds_openshift_peering" {
   }
 }
 
-
-resource "aws_route_table" "rds_to_openshift_route_table" {
-  vpc_id = module.quay_vpc.vpc_id
-
-  tags = {
-    Environment = "${var.prefix}"
-  }
-}
-
 resource "aws_route" "rds_to_os_r" {
-  route_table_id            = "${aws_route_table.rds_to_openshift_route_table.id}"
+  route_table_id            = "${module.quay_vpc.vpc_main_route_table_id}"
   destination_cidr_block    = "${data.aws_vpc.openshift_vpc.cidr_block}"
   vpc_peering_connection_id = "${aws_vpc_peering_connection.rds_openshift_peering.id}"
 }
@@ -187,11 +175,10 @@ resource "aws_route" "os_to_rds_r" {
   vpc_peering_connection_id = "${aws_vpc_peering_connection.rds_openshift_peering.id}"
 }
 
-/* TODO: Add route table entries to route ALB traffic to ELB 
-resource "aws_route_table_association" "rds_to_os_assoc" {
-    for_each = toset(module.quay_vpc.public_subnets)
-
-    subnet_id = each.value
-    route_table_id = aws_route_table.rds_to_openshift_route_table.id
-} */
+# add route to public table for ALB traffic to ELB
+resource "aws_route" "quay_to_os" {
+  route_table_id = "${module.quay_vpc.public_route_table_ids[0]}"
+  destination_cidr_block    = "${data.aws_vpc.openshift_vpc.cidr_block}"
+  vpc_peering_connection_id = "${aws_vpc_peering_connection.rds_openshift_peering.id}"
+}
 

@@ -4,8 +4,8 @@ resource "aws_db_instance" "quay_db" {
   allocated_storage      = 5
   engine                 = "mysql"
   engine_version         = var.quay_db_version
-  name                   = "quay"
-  username               = "quay"
+  db_name                = var.deploy_type == "secondary" ? null : "quay"
+  username               = var.deploy_type == "secondary" ? null : "quay"
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
   vpc_security_group_ids = [aws_security_group.db_security_group.id]
