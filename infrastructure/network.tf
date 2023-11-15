@@ -1,6 +1,6 @@
 module "quay_vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "2.77.0"
+  version = "5.1.2"
 
   name                 = "${var.prefix}-vpc"
   cidr                 = "${var.quay_vpc_cidr}"

@@ -4,7 +4,6 @@ resource "tls_private_key" "quay_lb_cert_key" {
 }
 
 resource "tls_self_signed_cert" "quay_lb_cert" {
-  key_algorithm   = "ECDSA"
   private_key_pem = "${tls_private_key.quay_lb_cert_key.private_key_pem}"
 
   subject {
