@@ -1,12 +1,12 @@
 output "quay_rds_hostname" {
   description = "RDS instance hostname"
-  value       = aws_db_instance.quay_db.address
+  value       = aws_rds_cluster.quay_db.endpoint
   sensitive   = false
 }
 
 output "quay_rds_port" {
   description = "RDS instance port"
-  value       = aws_db_instance.quay_db.port
+  value       = aws_rds_cluster.quay_db.port
   sensitive   = false
 }
 

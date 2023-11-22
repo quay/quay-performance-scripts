@@ -1,32 +1,34 @@
-resource "aws_db_instance" "quay_db" {
-  identifier             = "${var.prefix}-quay-db"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 5
-  engine                 = "mysql"
-  engine_version         = var.quay_db_version
-  db_name                   = "quay"
-  username               = "quay"
-  password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
+
+resource "aws_rds_cluster" "quay_db" {
+  cluster_identifier      = "${var.prefix}-quay-db"
+  engine                  = "aurora-postgresql"
+  availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  database_name           = "quay"
+  master_username         = "quay"
+  master_password         = var.db_password
+  apply_immediately       = true
+  skip_final_snapshot     = true
   vpc_security_group_ids = [aws_security_group.db_security_group.id]
-  parameter_group_name   = aws_db_parameter_group.quay_db_prameter_group.name
-  publicly_accessible    = true
-  skip_final_snapshot    = true
-  auto_minor_version_upgrade = false
-  multi_az = var.quay_db_multi_az
-  tags = {
-    Deployment = "${var.prefix}"
-  }
-
-  replicate_source_db = var.deploy_type == "secondary" ? var.primary_db_arn : null
-  backup_retention_period = 5
+  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
 }
 
-resource "aws_db_parameter_group" "quay_db_prameter_group" {
-  name   = "${var.prefix}-quay-db-parameter-group"
-  family = "mysql5.7"
+resource "aws_rds_cluster_instance" "quay_db_instance" {
+  count              = 1
+  identifier         = "${var.prefix}-quay-aurora-db"
+  cluster_identifier = aws_rds_cluster.quay_db.id
+  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
+  instance_class     = "db.r6g.large"
+  engine             = aws_rds_cluster.quay_db.engine
+  engine_version     = aws_rds_cluster.quay_db.engine_version
+  publicly_accessible = true
+  apply_immediately       = true
 
-  tags = {
-    Deployment = "${var.prefix}"
+}
+
+resource "null_resource" "setup_db" {
+  depends_on = [aws_rds_cluster_instance.quay_db_instance] # wait for the db to be ready
+  provisioner "local-exec" {
+    command = "PGPASSWORD=${var.db_password} psql -U ${aws_rds_cluster.quay_db.master_username} -h ${aws_rds_cluster.quay_db.endpoint} < setup-db.sql"
   }
 }
+

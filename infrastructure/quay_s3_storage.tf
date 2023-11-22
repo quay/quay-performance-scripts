@@ -2,24 +2,25 @@ locals {
   is_secondary = var.deploy_type == "secondary" ? 1 : 0
 }
 
+
+
 resource "aws_s3_bucket" "quay_s3_storage" {
   bucket = "${var.prefix}-quay-storage"
   force_destroy = true
-  versioning {
-    enabled = true
+  tags = {
+    Name        = "${var.prefix}-quay-storage"
+    Environment = "perftest"
   }
+}
 
+resource "aws_s3_bucket_cors_configuration" "quay_s3_cors" {
+  bucket = aws_s3_bucket.quay_s3_storage.id
   cors_rule {
      allowed_headers = ["*"]
      allowed_methods = ["PUT","POST", "GET", "DELETE"]
      allowed_origins = ["*"]
      expose_headers = ["ETag"]
      max_age_seconds = 3000
-  }
-
-  tags = {
-    Name        = "${var.prefix}-quay-storage"
-    Environment = "perftest"
   }
 }
 
