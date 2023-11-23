@@ -51,10 +51,10 @@ data "template_file" "quay_template" {
     redis_port = "6379"
     redis_password = "${var.db_password}"
 
-    db_user = "${aws_db_instance.quay_db.username}"
+    db_user = "${aws_rds_cluster.quay_db.master_username}"
     db_password = "${var.db_password}"
-    db_host = "${aws_db_instance.quay_db.address}"
-    db_port = 3306
+    db_host = "${aws_rds_cluster.quay_db.endpoint}"
+    db_port = 5432
 
     s3_secret_key = "${aws_iam_access_key.s3_access_key.secret}"
     s3_access_key_id = "${aws_iam_access_key.s3_access_key.id}"

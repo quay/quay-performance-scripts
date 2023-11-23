@@ -267,7 +267,7 @@ stringData:
     DB_CONNECTION_ARGS:
       autorollback: true
       threadlocals: true
-    DB_URI: mysql+pymysql://${db_user}:${db_password}@${db_host}:${db_port}/quay
+    DB_URI: postgresql://${db_user}:${db_password}@${db_host}:${db_port}/quay
     DEFAULT_TAG_EXPIRATION: 2w
     DISTRIBUTED_STORAGE_CONFIG:
       s3_us_east_1:
@@ -355,39 +355,6 @@ stringData:
         MAX_LIFETIME_S: 3600
 
 %{ if  enable_clair }    
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: quay-app-lb
-  namespace: ${namespace}
-  labels:
-    quay-component: quay-app
-spec:
-  type: LoadBalancer
-  ports:
-    - protocol: TCP
-      name: https
-      port: 443
-      targetPort: 8443
-    - protocol: TCP
-      name: http
-      port: 80
-      targetPort: 8080
-    - name: jwtproxy
-      protocol: TCP
-      port: 8081
-      targetPort: 8081
-    - name: grpc
-      protocol: TCP
-      port: 55443
-      targetPort: 55443
-    - name: metrics
-      protocol: TCP
-      port: 9091
-      targetPort: 9091
-  selector:
-    quay-component: quay-app
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -504,73 +471,6 @@ kind: ServiceAccount
 metadata:
   name: quay-app
   namespace: ${namespace}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: quay-config-secret
-  namespace: ${namespace}
-stringData:
-  default-cloudfront-signing-key.pem : |
-    ${cloudfront_signing_key_pem}
-  ssl.cert : |
-    ${ssl_cert}
-  ssl.key : |
-    ${ssl_key}
-
-  config.yaml: |
-    REGISTRY_STATE: ${registry_state}
-    ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
-    AUTHENTICATION_TYPE: Database
-    DATABASE_SECRET_KEY: db-secret-key
-    DB_CONNECTION_ARGS:
-      autorollback: true
-      threadlocals: true
-    DB_URI: mysql+pymysql://${db_user}:${db_password}@${db_host}:${db_port}/quay
-    DEFAULT_TAG_EXPIRATION: 2w
-    DISTRIBUTED_STORAGE_CONFIG:
-      s3_us_west_1:
-      - CloudFrontedS3Storage
-      - cloudfront_distribution_domain: ${cloudfront_distribution_domain}
-        cloudfront_key_id: ${cloudfront_key_id}
-        cloudfront_privatekey_filename: default-cloudfront-signing-key.pem
-        s3_access_key: ${s3_access_key_id}
-        s3_secret_key: ${s3_secret_key}
-        s3_bucket: ${s3_bucket_name}
-        s3_region: us-east-1
-        cloudfront_distribution_org_overrides: {}
-        storage_path: "/images"
-    DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS:
-    - s3_us_west_1
-    DISTRIBUTED_STORAGE_PREFERENCE:
-    - s3_us_west_1
-    ENTERPRISE_LOGO_URL: /static/img/quay-horizontal-color.svg
-    EXTERNAL_TLS_TERMINATION: false
-    FEATURE_DIRECT_LOGIN: true
-    FEATURE_MAILING: false
-    FEATURE_PROXY_STORAGE: false
-    FEATURE_SECURITY_NOTIFICATIONS: true
-    FEATURE_SECURITY_SCANNER: true
-    FEATURE_STORAGE_REPLICATION: false
-    PREFERRED_URL_SCHEME: https
-    REGISTRY_TITLE: Quay
-    REGISTRY_TITLE_SHORT: Quay
-    SECRET_KEY: odokjFBbOqQkg-lhiHwE0ZNcUIT46VfONf8uLfLTUW-Vj2vphWLjpxjxCrKA3OTY-iO802SJiMSb0B63
-    SECURITY_SCANNER_INDEXING_INTERVAL: 30
-    SECURITY_SCANNER_V4_ENDPOINT: http://clair-app:80
-    SECURITY_SCANNER_V4_NAMESPACE_WHITELIST:
-    - admin
-    SECURITY_SCANNER_V4_PSK: ${clair_auth_psk}
-    SERVER_HOSTNAME: ${quay_route_host}
-    SETUP_COMPLETE: true
-    TAG_EXPIRATION_OPTIONS:
-    - 2w
-    TEAM_RESYNC_STALE_TIME: 60m
-    TESTING: false
-    USER_EVENTS_REDIS:
-      host: ${redis_host}
-      port: ${redis_port}
-      ssl: false
 ---
 apiVersion: v1
 kind: Secret
