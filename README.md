@@ -20,6 +20,7 @@ The test suite is designed to run on openshift platform using a simple configura
   permissions (checkboxes) granted. Hold on to this token as it will be used
   later.
 - Once after the quay application is deployed. Do a `pg_dump` in the quay postgres pod to capture the initial snapshot into a sql file and keep it copied at `assets/quaydb.sql`.
+- An elasticsearch cluster is needed to store results. You can spin one using the [Operator](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-eck.html)
 
 ## Running tests
 
