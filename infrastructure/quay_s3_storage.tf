@@ -1,8 +1,7 @@
-locals {
-  is_secondary = var.deploy_type == "secondary" ? 1 : 0
+provider "aws" {
+  alias  = "east1"
+  region = "us-east-1"
 }
-
-
 
 resource "aws_s3_bucket" "quay_s3_storage" {
   bucket = "${var.prefix}-quay-storage"
@@ -11,6 +10,14 @@ resource "aws_s3_bucket" "quay_s3_storage" {
     Name        = "${var.prefix}-quay-storage"
     Environment = "perftest"
   }
+}
+
+resource "aws_s3_bucket_versioning" "quay_s3_storage" {
+  bucket = aws_s3_bucket.quay_s3_storage.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+  depends_on = [aws_s3_bucket.quay_s3_storage]
 }
 
 resource "aws_s3_bucket_cors_configuration" "quay_s3_cors" {
@@ -26,7 +33,7 @@ resource "aws_s3_bucket_cors_configuration" "quay_s3_cors" {
 
 resource "aws_iam_role" "replication" {
   name = "${var.prefix}-iam-role-replication"
-  count = local.is_secondary
+  count = local.is_secondary ? 1 : 0
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -46,7 +53,7 @@ POLICY
 
 resource "aws_iam_policy" "replication" {
   name = "${var.prefix}-iam-role-policy-replication"
-  count = local.is_secondary
+  count = local.is_secondary ? 1 : 0
   policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -89,5 +96,24 @@ POLICY
 resource "aws_iam_role_policy_attachment" "replication" {
   role       = aws_iam_role.replication[0].name
   policy_arn = aws_iam_policy.replication[0].arn
-  count = local.is_secondary
-} 
+  count = local.is_secondary ? 1 : 0
+}
+
+resource "aws_s3_bucket_replication_configuration" "quay_s3_storage_replication" {
+  provider = aws.east1
+  count = local.is_secondary ? 1 : 0
+  depends_on = [aws_s3_bucket_versioning.quay_s3_storage]
+
+  role   = aws_iam_role.replication[0].arn
+  bucket =  reverse(split(":", var.primary_s3_bucket_arn))[0] # Gets bucket name from ARN
+
+  rule {
+    id = "quay-replication-to-secondary"
+
+    status = "Enabled"
+
+    destination {
+      bucket = aws_s3_bucket.quay_s3_storage.arn
+    }
+  }
+}

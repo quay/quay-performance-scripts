@@ -35,6 +35,8 @@ data "aws_availability_zones" "available" {}
 locals {
     quay_route_endpoint = "oauth-openshift.${var.openshift_route_suffix}"
     quay_hostname = "${var.prefix}.${data.aws_route53_zone.zone.name}"
+    is_primary = var.deploy_type == "primary"
+    is_secondary = var.deploy_type == "secondary"
 }
 
 data "template_file" "quay_template" {
@@ -84,7 +86,7 @@ data "template_file" "quay_template" {
     builder_subnet_id = "${module.quay_vpc.public_subnets[0]}"
     builder_ssh_keypair = "${var.builder_ssh_keypair}"
 
-    registry_state = local.is_secondary == 1 ? "readonly" : "normal"
+    registry_state = local.is_secondary ? "readonly" : "normal"
 
     enable_monitoring = var.enable_monitoring
     prometheus_image = "${var.prometheus_image}"
