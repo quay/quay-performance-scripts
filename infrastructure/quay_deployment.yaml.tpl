@@ -257,10 +257,20 @@ stringData:
     ${ssl_cert}
   ssl.key : |
     ${ssl_key}
+  %{ if is_secondary } 
+  quay-readonly.kid: |
+    ${service_key_kid}
+  quay-readonly.pem: |
+    ${service_key_pem}
+  %{ endif }
 
   config.yaml: |
 
     REGISTRY_STATE: ${registry_state}
+    %{ if is_secondary } 
+    INSTANCE_SERVICE_KEY_KID_LOCATION: 'conf/stack/quay-readonly.kid'
+    INSTANCE_SERVICE_KEY_LOCATION: 'conf/stack/quay-readonly.pem'
+    %{ endif }
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING: false
     AUTHENTICATION_TYPE: Database
     DATABASE_SECRET_KEY: db-secret-key

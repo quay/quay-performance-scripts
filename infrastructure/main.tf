@@ -92,6 +92,10 @@ data "template_file" "quay_template" {
     prometheus_image = "${var.prometheus_image}"
     grafana_image = "${var.grafana_image}"
     prometheus_host = var.enable_monitoring ? "prometheus-${var.prefix}.${data.aws_route53_zone.zone.name}" : ""
+
+    service_key_kid = local.is_secondary ? "${file("${var.service_key_kid_path}")}" : ""
+    service_key_pem = local.is_secondary ? "${file("${var.service_key_pem_path}")}" : ""
+    is_secondary = local.is_secondary
   }
 }
 

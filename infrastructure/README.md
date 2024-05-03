@@ -79,29 +79,20 @@ Before running the infra scripts, you need to:
 
 **NOTE** Creating the secondary instance requires completing the setup of the primary instance from the previous section first.
 
-1. The secondary instance is readonly and requires service keys to be configured through the primary instance. The service keys are used for functions related to signing and token generation. First we need to generate those keys via a script in the Quay repository.
+1. The secondary instance is readonly and requires service keys to be configured through the primary instance. The service keys are used for functions related to signing and token generation. Run the following script to generate the service key and update in the primary database:
+
+  ```
+  ./setup_service_keys.sh <primary_quay_db_password> <primary_quay_db_host>
+  ```
+
+1. The script will output the commands for setting the `service_key_kid_path` and `service_key_pem_path` Terraform variables similar to below. Run those commands to set both of the variables.
 
 ```
-$ git clone https://github.com/quay/quay  # clone the Quay repository
-$ python -m venv venv # Create a python virtual environment
-$ source venv/bin/activate # Activate the python virtual environment
-$ pip install -r requirements-generatekeys.txt # Install the dependencies required for key generation
-$ cd tools # Change to the tools directory
-$ python generatekeypair.py quay-readonly # Run the script to generate the keys
-$ ls | grep 'quay-readonly' # The following files should be generated
-quay-readonly.jwk
-quay-readonly.kid
-quay-readonly.pem
+export TF_VAR_service_key_kid_path='./service-key-generator/quay-readonly.kid'"
+export TF_VAR_service_key_jwt_path='./service-key-generator/quay-readonly.jwk'"
 ```
 
-1. Install the key's to the primary instance. Replace the values of `$QUAY_READONLY_KID` and `$QUAY_READONLY_JWT` with the contents of `quay-readonly.kid` and `quay-readonly.jwk`respectively in the `update_service_keys.sql` script.
-
-1. Execute the script against the primary database created in the previous section. The database host can be found in the terraform output when creating the primary instance or through the AWS console. 
-```
-PGPASSWORD=$TF_VAR_db_password psql -U quay -h $QUAY_PRIMARY_DB_HOST < update_service_keys.sql
-```
-
-1. We can now create the secondary instances through Terraform. Ensure the AWS CLI is installed and configured with the access and secret keys. Update the region to `us-east-2` by modifying the `~/.aws/config` file.
+1. Ensure the AWS CLI is installed and configured with the access and secret keys. Update the region to `us-east-2` by modifying the `~/.aws/config` file.
 
 1. Log into the OCP cluster in the secondary region via `oc login`. Credentials can be retrieved via Openshift console.
 
@@ -112,7 +103,7 @@ PGPASSWORD=$TF_VAR_db_password psql -U quay -h $QUAY_PRIMARY_DB_HOST < update_se
     $ terraform workspace select secondary
     ```
 
-1. You need to set the following variables (as environment variables prefixed with `TF_VAR_` or variables in `terraform.tfvars`). Reference the example in `./envs/example-secondary.env` and modify as needed. Note `primary_s3_bucket_arn` and `primary_db_arn` are now required.
+1. You need to set the following variables (as environment variables prefixed with `TF_VAR_` or variables in `terraform.tfvars`). Reference the example in `./envs/example-secondary.env` and modify as needed. Note additional parameters specific to the secondary environment are required.
     * `region` : Should be set to `us-east-2` (default `us-east-1`)
     * `deploy_type`: Should be set to `secondary`
     * `quay_vpc_cidr`: Pick an unused private range CIDR of `172.16../16 - 172.29../16`. VPC where quay resources like DB, redis will be deployed. Will fail if a VPC already exists with this range.
@@ -122,6 +113,8 @@ PGPASSWORD=$TF_VAR_db_password psql -U quay -h $QUAY_PRIMARY_DB_HOST < update_se
     * `kube_context`: Local kuberenetes context containing authentication to the target cluster
     * `primary_s3_bucket_arn`: The Amazon resource name of the primary S3 bucket, used for replication
     * `primary_db_arn`: The Amazon resource name of the primary database, used for replication
+    * `service_key_kid_path`: Path to the file containing the file containing the service key kid (Run `setup_service_keys.sh` script to generate keys, details in step 1)
+    * `service_key_pem_path`: Path to the file containing the service key pem (Run `setup_service_keys.sh` script to generate keys, details in step 1)
 
    
    You could optionally set the following variables if required
@@ -138,35 +131,6 @@ PGPASSWORD=$TF_VAR_db_password psql -U quay -h $QUAY_PRIMARY_DB_HOST < update_se
 
 1. Create the resources `terraform apply`
     > **NOTE** Terraform also generates a statefile `terraform.tfstate`. DO NOT DELETE this file or commit it. This file keeps track of all the resources on AWS associated with your workspace.
-
-1. This command generates all the resources required and outputs `<prefix>_quay_deployment.yaml` file. Before applying this file we first need to add the service keys to Quay config secret. Modify the `quay-config-secret` in the `<prefix>_quay_deployment.yaml` file with the following:
-```
-apiVersion: v1
-kind: Secret
-metadata:
-  name: quay-config-secret
-  namespace: secondary-quay
-stringData:
-  default-cloudfront-signing-key.pem: |
-    ...
-    
-  ssl.cert: |
-    ...
-    
-  ssl.key: |
-    ...
-
-  quay-readonly.kid: |                       # Add this
-    <contents of quay-readonly.kid>
-
-  quay-readonly.jwt: |                       # Add this
-    <contents of quay-readonly.jwt>
-  
-  config.yaml: |
-    INSTANCE_SERVICE_KEY_KID_LOCATION: 'conf/stack/quay-readonly.kid' # Add this
-    INSTANCE_SERVICE_KEY_LOCATION: 'conf/stack/quay-readonly.pem' # Add this
-    ...rest of config
-```
 
 1. Create the deployment with `oc apply -f <prefix>-quay-deployment.yaml`
 

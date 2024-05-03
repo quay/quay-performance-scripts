@@ -159,3 +159,15 @@ variable "clair_db_version" {
   type = string
   default = "14.2"
 }
+
+variable "service_key_kid_path" {
+  description = "Path to the service key kid for the secondary environment generated after running the setup_service_keys script"
+  type = string
+  default = ""
+}
+
+variable "service_key_pem_path" {
+  description = "Path to the service key pem for the secondary environment generated after running the setup_service_keys script"
+  type = string
+  default = ""
+}
