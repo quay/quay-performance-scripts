@@ -160,14 +160,14 @@ variable "clair_db_version" {
   default = "14.2"
 }
 
-variable "service_key_kid_path" {
-  description = "Path to the service key kid for the secondary environment generated after running the setup_service_keys script"
+variable "primary_db_hostname" {
+  description = "Hostname of the primary database, used for setting up the service key"
   type = string
   default = ""
 }
 
-variable "service_key_pem_path" {
-  description = "Path to the service key pem for the secondary environment generated after running the setup_service_keys script"
+variable "primary_db_password" {
+  description = "Password of the primary database, used for setting up the service key"
   type = string
   default = ""
 }

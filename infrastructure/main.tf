@@ -39,7 +39,52 @@ locals {
     is_secondary = var.deploy_type == "secondary"
 }
 
+data "http" "genkeyscript" {
+  url = "https://raw.githubusercontent.com/quay/quay/master/tools/generatekeypair.py"
+}
+
+resource "null_resource" "update_service_key" {
+  count = local.is_secondary ? 1 : 0
+  provisioner "local-exec" {
+    command = <<EOT
+      python -m venv venv
+      source venv/bin/activate
+      pip install -r requirements-generatekeys.txt
+
+      # Generate quay-readonly.pem, quay-readonly.kid, and quay-readonly.jwk
+      python -c '${data.http.genkeyscript.body}' quay-readonly
+
+      # Write out SQL commands for updating service keys
+      sed -e "s/QUAY_READONLY_KID/$(cat quay-readonly.kid)/g" \
+        -e "s/QUAY_READONLY_JWK/$(cat quay-readonly.jwk)/g" \
+        update_service_keys.sql.template > update_service_keys.sql
+
+      # Run script to update service keys
+      PGPASSWORD=${var.primary_db_password} psql -U quay -h ${var.primary_db_hostname} < update_service_keys.sql
+    EOT
+  }
+}
+
+data "local_file" "key" {
+  count = local.is_secondary ? 1 : 0
+  depends_on = [null_resource.update_service_key]
+  filename = "quay-readonly.jwk"
+}
+
+data "local_file" "cert" {
+  count = local.is_secondary ? 1 : 0
+  depends_on = [null_resource.update_service_key]
+  filename = "quay-readonly.pem"
+}
+
+data "local_file" "key_id" {
+  count = local.is_secondary ? 1 : 0
+  depends_on = [null_resource.update_service_key]
+  filename = "quay-readonly.kid"
+}
+
 data "template_file" "quay_template" {
+  depends_on = [data.local_file.key, data.local_file.cert, data.local_file.key_id]
   template = "${file("${path.module}/quay_deployment.yaml.tpl")}"
   vars = {
     namespace = "${var.prefix}-quay"
@@ -93,8 +138,8 @@ data "template_file" "quay_template" {
     grafana_image = "${var.grafana_image}"
     prometheus_host = var.enable_monitoring ? "prometheus-${var.prefix}.${data.aws_route53_zone.zone.name}" : ""
 
-    service_key_kid = local.is_secondary ? "${file("${var.service_key_kid_path}")}" : ""
-    service_key_pem = local.is_secondary ? "${file("${var.service_key_pem_path}")}" : ""
+    service_key_kid = local.is_secondary ? "${indent(4, data.local_file.key_id[0].content)}" : ""
+    service_key_pem = local.is_secondary ? "${indent(4, data.local_file.cert[0].content)}" : ""
     is_secondary = local.is_secondary
   }
 }
@@ -102,4 +147,11 @@ data "template_file" "quay_template" {
 resource "local_file" "quay_deployment" {
   content = data.template_file.quay_template.rendered
   filename = "${var.prefix}_quay_deployment.yaml"
+}
+
+resource "null_resource" "clean" {
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f quay-readonly.pem quay-readonly.kid quay-readonly.jwk update_service_keys.sql"
+  }
 }

@@ -3,6 +3,7 @@ resource "aws_rds_global_cluster" "quay_global_db" {
   force_destroy                = true
   global_cluster_identifier    = "${var.prefix}-global-quay-db"
   source_db_cluster_identifier = "${var.primary_db_arn}"
+  database_name                = "quay"
 }
 
 resource "aws_rds_cluster" "quay_db" {

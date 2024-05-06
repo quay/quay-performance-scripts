@@ -258,7 +258,7 @@ stringData:
   ssl.key : |
     ${ssl_key}
   %{ if is_secondary } 
-  quay-readonly.kid: |
+  quay-readonly.kid: |-
     ${service_key_kid}
   quay-readonly.pem: |
     ${service_key_pem}
