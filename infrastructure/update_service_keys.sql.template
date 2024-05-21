@@ -5,7 +5,7 @@ INSERT INTO servicekey (name, service, metadata, kid, jwk, created_date, expirat
                 'QUAY_READONLY_KID',   
                 'QUAY_READONLY_JWK',
                 '2024-01-01 00:00:00', 
-                '2025-01-01 00:00:00');
+                '3024-01-01 00:00:00');
 
 INSERT INTO servicekeyapproval (approved_date, approval_type, notes)
     VALUES ('2024-01-01 00:00:00', 'Quay Readonly Service Key', 'approval notes');
