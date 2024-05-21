@@ -9,6 +9,7 @@ resource "aws_route53_record" "quay" {
   name    = "${var.prefix}.${data.aws_route53_zone.zone.name}"
   type    = "CNAME"
   ttl     = "60"
+  allow_overwrite = true
   records = ["${kubernetes_service.quay_lb_service.status.0.load_balancer.0.ingress.0.hostname}"]
 }
 

@@ -159,3 +159,15 @@ variable "clair_db_version" {
   type = string
   default = "14.2"
 }
+
+variable "primary_db_hostname" {
+  description = "Hostname of the primary database, used for setting up the service key"
+  type = string
+  default = ""
+}
+
+variable "primary_db_password" {
+  description = "Password of the primary database, used for setting up the service key"
+  type = string
+  default = ""
+}
