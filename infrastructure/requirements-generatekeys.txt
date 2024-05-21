@@ -1,4 +1,4 @@
-cryptography==3.4.7
+cryptography==42.0.4
 pycparser==2.19
 pycryptodome==3.9.4
 pycryptodomex==3.9.4
