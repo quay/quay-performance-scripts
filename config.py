@@ -59,4 +59,4 @@ class Config:
         assert isinstance(self.config["batch_size"], int), "BATCH_SIZE is not an integer"
         assert self.config["test_namespace"], "TEST_NAMESPACE is not set"
         assert self.config["base_url"], "BASE_URL is not set"
-        assert self.config["test_phases"], "TEST_PHASES are not set. Valid options are LOAD,RUN and DELETE"
+        assert self.config["test_phases"], "TEST_PHASES are not set. Valid options are LOAD,RUN, PUSH_PULL and DELETE"
