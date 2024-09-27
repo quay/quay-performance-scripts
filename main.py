@@ -543,24 +543,25 @@ def parallel_process(user, **kwargs):
     logging.info('Queued %s tags to be pulled' % len(common_args['tags']))
 
     # Start the Registry Push Test job
-    create_test_push_job(common_args['namespace'], common_args['quay_host'], user, 
-    common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
-    common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
-    time.sleep(60)  # Give the Job time to start
-    while True:
-        # Check Job Status
-        job_name = 'test-registry-push'+"-".join(user.split("_"))
-        job_api = client.BatchV1Api()
-        resp = job_api.read_namespaced_job_status(name=job_name, namespace=common_args['namespace'])
-        completion_time = resp.status.completion_time
-        if completion_time:
-            logging.info("Job %s has been completed." % (job_name))
-            break
+    if common_args['skip_push'] != "true":
+        create_test_push_job(common_args['namespace'], common_args['quay_host'], user,
+        common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'],
+        common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
+        time.sleep(60)  # Give the Job time to start
+        while True:
+            # Check Job Status
+            job_name = 'test-registry-push'+"-".join(user.split("_"))
+            job_api = client.BatchV1Api()
+            resp = job_api.read_namespaced_job_status(name=job_name, namespace=common_args['namespace'])
+            completion_time = resp.status.completion_time
+            if completion_time:
+                logging.info("Job %s has been completed." % (job_name))
+                break
 
-        # Log Queue Status
-        remaining = redis_client.llen('tags_to_push'+"-".join(user.split("_")))
-        logging.info('Waiting for %s to finish. Queue: %s/%s' % (job_name, remaining, len(common_args['tags'])))
-        time.sleep(60 * 1)  # 1 minute
+            # Log Queue Status
+            remaining = redis_client.llen('tags_to_push'+"-".join(user.split("_")))
+            logging.info('Waiting for %s to finish. Queue: %s/%s' % (job_name, remaining, len(common_args['tags'])))
+            time.sleep(60 * 1)  # 1 minute
 
     # Start the Registry Pull Test job
     create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, 
@@ -657,6 +658,13 @@ if __name__ == '__main__':
         ]
         tags.extend(repo_tags)
 
+    explicit_tags = env_config["tags"].split(",")
+    if len(explicit_tags) > 0:
+        tags = []
+        logging.info("explicit tags: %s", explicit_tags)
+        for tag in explicit_tags:
+            tags.append(tag)
+
     print_header(
         'Running Quay Scale & Performance Tests',
         date=datetime.datetime.utcnow().isoformat(),
@@ -688,7 +696,8 @@ if __name__ == '__main__':
     "batch_size": env_config["batch_size"],
     "tags": tags,
     "push_pull_image": env_config["push_pull_image"],
-    "target_hit_size": env_config["target_hit_size"]
+    "target_hit_size": env_config["target_hit_size"],
+    "skip_push": env_config["skip_push"]
     }
 
     if ('push_pull' in phases_list):
