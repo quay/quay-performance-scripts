@@ -650,20 +650,19 @@ if __name__ == '__main__':
 
     # Calculate all tags to be pushed/pulled
     tags = []
-    for i, repo_size in enumerate(repo_sizes):
-        repo = repos_with_data[i]
-        repo_tags = [
-            '%s/%s/%s:%s' % (env_config["quay_host"], organization, repo, n)
-            for n in range(0, repo_size)
-        ]
-        tags.extend(repo_tags)
-
     explicit_tags = env_config["tags"].split(",")
-    if len(explicit_tags) > 0:
-        tags = []
+    if len(explicit_tags > 0):
         logging.info("explicit tags: %s", explicit_tags)
         for tag in explicit_tags:
             tags.append(tag)
+    else:
+        for i, repo_size in enumerate(repo_sizes):
+            repo = repos_with_data[i]
+            repo_tags = [
+                '%s/%s/%s:%s' % (env_config["quay_host"], organization, repo, n)
+                for n in range(0, repo_size)
+            ]
+            tags.extend(repo_tags)
 
     print_header(
         'Running Quay Scale & Performance Tests',
