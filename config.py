@@ -34,7 +34,9 @@ class Config:
             'batch_size': int(os.environ.get('TEST_BATCH_SIZE', 400)),
             'test_namespace': os.environ.get("TEST_NAMESPACE"),
             'base_url': '%s://%s' % ("https", os.environ.get("QUAY_HOST")),
-            'test_phases': os.environ.get('TEST_PHASES')
+            'test_phases': os.environ.get('TEST_PHASES'),
+            'tags': os.environ.get('TAGS'),
+            'skip_push': os.environ.get('SKIP_PUSH')
         }
         self.validate_config()
         return self.config
