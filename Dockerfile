@@ -6,7 +6,13 @@ WORKDIR /tmp
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Install necessary libraries for subsequent commands
-RUN apt-get update && apt-get install -y podman wget git dumb-init python3.6 python3-distutils python3-pip python3-apt redis-server
+RUN apt-get update && \
+    apt-get install -y software-properties-common python3.6 python3-venv python3-pip python3-apt wget git dumb-init podman redis-server
+
+# Create and activate virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Install vegeta for HTTP benchmarking
 RUN wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8.3-linux-amd64.tar.gz \
  && tar -xzf vegeta-12.8.3-linux-amd64.tar.gz \
@@ -17,8 +23,9 @@ RUN wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8
 RUN mkdir -p /opt/snafu/ \
  && wget -O /tmp/benchmark-wrapper.tar.gz https://github.com/cloud-bulldozer/benchmark-wrapper/archive/refs/tags/v1.0.0.tar.gz \
  && tar -xzf /tmp/benchmark-wrapper.tar.gz -C /opt/snafu/ --strip-components=1 \
- && pip3 install --upgrade pip \
- && pip3 install -e /opt/snafu/ \
+ && pip install --upgrade pip \
+ && pip install -e /opt/snafu/ \
+ && pip install "numpy<2" \
  && rm -rf /tmp/benchmark-wrapper.tar.gz
 
 COPY . .

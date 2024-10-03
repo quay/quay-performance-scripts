@@ -543,24 +543,25 @@ def parallel_process(user, **kwargs):
     logging.info('Queued %s tags to be pulled' % len(common_args['tags']))
 
     # Start the Registry Push Test job
-    create_test_push_job(common_args['namespace'], common_args['quay_host'], user, 
-    common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
-    common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
-    time.sleep(60)  # Give the Job time to start
-    while True:
-        # Check Job Status
-        job_name = 'test-registry-push'+"-".join(user.split("_"))
-        job_api = client.BatchV1Api()
-        resp = job_api.read_namespaced_job_status(name=job_name, namespace=common_args['namespace'])
-        completion_time = resp.status.completion_time
-        if completion_time:
-            logging.info("Job %s has been completed." % (job_name))
-            break
+    if common_args['skip_push'] != "true":
+        create_test_push_job(common_args['namespace'], common_args['quay_host'], user,
+        common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'],
+        common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
+        time.sleep(60)  # Give the Job time to start
+        while True:
+            # Check Job Status
+            job_name = 'test-registry-push'+"-".join(user.split("_"))
+            job_api = client.BatchV1Api()
+            resp = job_api.read_namespaced_job_status(name=job_name, namespace=common_args['namespace'])
+            completion_time = resp.status.completion_time
+            if completion_time:
+                logging.info("Job %s has been completed." % (job_name))
+                break
 
-        # Log Queue Status
-        remaining = redis_client.llen('tags_to_push'+"-".join(user.split("_")))
-        logging.info('Waiting for %s to finish. Queue: %s/%s' % (job_name, remaining, len(common_args['tags'])))
-        time.sleep(60 * 1)  # 1 minute
+            # Log Queue Status
+            remaining = redis_client.llen('tags_to_push'+"-".join(user.split("_")))
+            logging.info('Waiting for %s to finish. Queue: %s/%s' % (job_name, remaining, len(common_args['tags'])))
+            time.sleep(60 * 1)  # 1 minute
 
     # Start the Registry Pull Test job
     create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, 
@@ -649,13 +650,19 @@ if __name__ == '__main__':
 
     # Calculate all tags to be pushed/pulled
     tags = []
-    for i, repo_size in enumerate(repo_sizes):
-        repo = repos_with_data[i]
-        repo_tags = [
-            '%s/%s/%s:%s' % (env_config["quay_host"], organization, repo, n)
-            for n in range(0, repo_size)
-        ]
-        tags.extend(repo_tags)
+    explicit_tags = env_config["tags"].split(",")
+    if len(explicit_tags > 0):
+        logging.info("explicit tags: %s", explicit_tags)
+        for tag in explicit_tags:
+            tags.append(tag)
+    else:
+        for i, repo_size in enumerate(repo_sizes):
+            repo = repos_with_data[i]
+            repo_tags = [
+                '%s/%s/%s:%s' % (env_config["quay_host"], organization, repo, n)
+                for n in range(0, repo_size)
+            ]
+            tags.extend(repo_tags)
 
     print_header(
         'Running Quay Scale & Performance Tests',
@@ -671,14 +678,37 @@ if __name__ == '__main__':
         repos_with_tags_sizes=repo_sizes,
         total_tags=len(tags),
         pull_push_batch_size=env_config["batch_size"],
-        number_of_push_pull_jobs_per_user=len(tags)//env_config["batch_size"],
     )
 
     namespace = env_config["test_namespace"]
 
-    if not ({'load', 'run', 'delete'} & set(phases_list)):
-        logging.info("No valid phases defined to run the tests. Valid options: LOAD, RUN and DELETE")
+    if not ({'load', 'run', 'delete', 'push_pull'} & set(phases_list)):
+        logging.info("No valid phases defined to run the tests. Valid options: LOAD, RUN, PUSH_PULL and DELETE")
         sys.exit()
+    
+    batch_args = {
+    "namespace": namespace,
+    "quay_host": env_config["quay_host"],
+    "concurrency": env_config["concurrency"],
+    "uuid": env_config["test_uuid"],
+    "auth_token": env_config["auth_token"],
+    "batch_size": env_config["batch_size"],
+    "tags": tags,
+    "push_pull_image": env_config["push_pull_image"],
+    "target_hit_size": env_config["target_hit_size"],
+    "skip_push": env_config["skip_push"]
+    }
+
+    if ('push_pull' in phases_list):
+        time.sleep(60)
+        username = os.environ.get('QUAY_USERNAME')
+        batch_args['password'] = os.environ.get('QUAY_PASSWORD')
+        start_time = datetime.datetime.utcnow()
+        logging.info(f"Starting image push/pulls (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        batch_process([username], batch_args)
+        end_time = datetime.datetime.utcnow()
+        logging.info(f"Ending image push/pulls (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+        exit(0)
 
     # Load Phase
     # These tests should run before container images are pushed
@@ -697,20 +727,9 @@ if __name__ == '__main__':
     elapsed_time = end_time - start_time
     logging.info(f"The load phase took {str(datetime.timedelta(seconds=elapsed_time.total_seconds()))}.")
 
-    batch_args = {
-        "namespace": namespace,
-        "quay_host": env_config["quay_host"],
-        "password": password,
-        "concurrency": env_config["concurrency"],
-        "uuid": env_config["test_uuid"],
-        "auth_token": env_config["auth_token"],
-        "batch_size": env_config["batch_size"],
-        "tags": tags,
-        "push_pull_image": env_config["push_pull_image"],
-        "target_hit_size": env_config["target_hit_size"]
-    }
     start_time = datetime.datetime.utcnow()
     logging.info(f"Starting image push/pulls (UTC): {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
+    batch_args['password'] = password
     batch_process([users[0]], batch_args)
     end_time = datetime.datetime.utcnow()
     logging.info(f"Ending image push/pulls (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
