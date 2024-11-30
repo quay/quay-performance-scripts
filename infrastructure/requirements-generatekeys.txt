@@ -1,6 +1,6 @@
 cryptography==3.4.7
 pycparser==2.19
-pycryptodome==3.9.4
+pycryptodome==3.19.1
 pycryptodomex==3.9.4
 pyjwkest==1.4.2
 PyJWT==1.7.1
