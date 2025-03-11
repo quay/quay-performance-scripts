@@ -650,8 +650,11 @@ if __name__ == '__main__':
 
     # Calculate all tags to be pushed/pulled
     tags = []
-    explicit_tags = env_config["tags"].split(",")
-    if len(explicit_tags > 0):
+    if env_config["tags"] is not None:
+        explicit_tags = env_config["tags"].split(",")
+    else:
+        explicit_tags = []
+    if len(explicit_tags) > 0:
         logging.info("explicit tags: %s", explicit_tags)
         for tag in explicit_tags:
             tags.append(tag)
