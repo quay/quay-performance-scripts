@@ -70,7 +70,8 @@ def podman_create(tags):
         unique_id = str(uuid.uuid4())
         dockerfile = (
             "FROM quay.io/jitesoft/alpine\n"
-            "RUN echo %s > /tmp/key.txt"
+            "RUN echo %s > /tmp/key.txt\n"
+            "RUN dd if=/dev/zero of=/tmp/largefile bs=1M count=10"
         ) % unique_id
 
         # Call Podman to build the Dockerfile
