@@ -70,7 +70,10 @@ def podman_create(tags):
         unique_id = str(uuid.uuid4())
         dockerfile = (
             "FROM quay.io/jitesoft/alpine\n"
-            "RUN echo %s > /tmp/key.txt"
+            "RUN echo %s > /tmp/key.txt\n"
+            "RUN dd if=/dev/zero of=/tmp/file1 bs=1M count=20\n"
+            "RUN dd if=/dev/zero of=/tmp/file2 bs=1M count=20\n"
+            "RUN dd if=/dev/zero of=/tmp/file3 bs=1M count=10"
         ) % unique_id
 
         # Call Podman to build the Dockerfile
@@ -409,6 +412,10 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         requests={
             'cpu': '1',
             'memory': '512Mi',
+            'ephemeral-storage': '12Gi',
+        },
+        limits={
+            'ephemeral-storage': '15Gi',
         }
     )
 
@@ -482,6 +489,10 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
         requests={
             'cpu': '1',
             'memory': '512Mi',
+            'ephemeral-storage': '12Gi',
+        },
+        limits={
+            'ephemeral-storage': '15Gi',
         }
     )
 
