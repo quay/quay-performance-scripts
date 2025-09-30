@@ -92,6 +92,10 @@ spec:
             value: <number-of-push-pull-images>
           - name: TARGET_HIT_SIZE
             value: <hit-size>
+          - name: CUSTOM_BUILD_IMAGE
+            value: "quay.io/vchalla/bugzooka:latest"
+          - name: TEST_BATCH_SIZE
+            value: "1"
           - name: CONCURRENCY
             value: <concurrency>
           - name: TEST_NAMESPACE

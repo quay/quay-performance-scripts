@@ -57,7 +57,7 @@ def podman_login(username, password):
     assert p.returncode == 0
 
 
-def podman_create(tags):
+def podman_create(tags, custom_build_image):
     """
     Execute podman to build and push all tags from unique images.
     """
@@ -68,10 +68,16 @@ def podman_create(tags):
 
         # Create a unique Dockerfile
         unique_id = str(uuid.uuid4())
-        dockerfile = (
-            "FROM quay.io/jitesoft/alpine\n"
-            "RUN echo %s > /tmp/key.txt"
-        ) % unique_id
+        if custom_build_image != "":
+            dockerfile = (
+                "FROM %s\n"
+                "RUN echo %s > /tmp/key.txt"
+            ) % (custom_build_image, unique_id)
+        else:
+            dockerfile = (
+                "FROM quay.io/jitesoft/alpine\n"
+                "RUN echo %s > /tmp/key.txt"
+            ) % unique_id
 
         # Call Podman to build the Dockerfile
         cmd = [
@@ -353,6 +359,7 @@ def test_push(num_tags):
 
     username = os.environ.get('QUAY_USERNAME')
     password = os.environ.get('QUAY_PASSWORD')
+    custom_build_image = os.environ.get('CUSTOM_BUILD_IMAGE', '')
 
     assert username, 'Ensure QUAY_USERNAME is set on this job.'
     assert password, 'Ensure QUAY_PASSWORD is set on this job.'
@@ -366,7 +373,7 @@ def test_push(num_tags):
     if tags:
         podman_login(username, password)
         logging.info("Creating and pushing %s tags", len(tags))
-        podman_create(tags)
+        podman_create(tags, custom_build_image)
         logging.info("Finished pushing batch.")
     
     else:
@@ -374,7 +381,8 @@ def test_push(num_tags):
 
 
 def create_test_push_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count, image, target_hit_size):
+                            test_uuid, token, batch_size, tag_count, image, 
+                            custom_build_image, target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
     off the queue and perform the podman build + podman push action on them.
@@ -391,6 +399,7 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='CONCURRENCY', value=str(concurrency)),
         client.V1EnvVar(name='TARGET_HIT_SIZE', value=str(target_hit_size)),
         client.V1EnvVar(name='PUSH_PULL_IMAGE', value=image),
+        client.V1EnvVar(name='CUSTOM_BUILD_IMAGE', value=custom_build_image),
         client.V1EnvVar(name='PUSH_PULL_ES_INDEX', value=env_config["push_pull_es_index"]),
         client.V1EnvVar(name='PUSH_PULL_NUMBERS', value=str(env_config["push_pull_numbers"])),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
@@ -447,7 +456,8 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
 
 def create_test_pull_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count, image, target_hit_size):
+                            test_uuid, token, batch_size, tag_count, image, 
+                            custom_build_image, target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
     off the queue and perform the podman pull action on them.
@@ -546,7 +556,8 @@ def parallel_process(user, **kwargs):
     if common_args['skip_push'] != "true":
         create_test_push_job(common_args['namespace'], common_args['quay_host'], user,
         common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'],
-        common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
+        common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['custom_build_image'],
+        common_args['target_hit_size'])
         time.sleep(60)  # Give the Job time to start
         while True:
             # Check Job Status
@@ -699,7 +710,8 @@ if __name__ == '__main__':
     "tags": tags,
     "push_pull_image": env_config["push_pull_image"],
     "target_hit_size": env_config["target_hit_size"],
-    "skip_push": env_config["skip_push"]
+    "skip_push": env_config["skip_push"],
+    "custom_build_image": env_config["custom_build_image"]
     }
 
     if ('push_pull' in phases_list):
