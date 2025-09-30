@@ -407,8 +407,8 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
     resource_requirements = client.V1ResourceRequirements(
         requests={
-            'cpu': '1',
-            'memory': '512Mi',
+            'cpu': '1m',
+            'memory': '10Mi',
         }
     )
 
@@ -480,8 +480,8 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
 
     resource_requirements = client.V1ResourceRequirements(
         requests={
-            'cpu': '1',
-            'memory': '512Mi',
+            'cpu': '1m',
+            'memory': '10Mi',
         }
     )
 
