@@ -48,7 +48,11 @@ Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshi
 * `ES_HOST` - String. Elastic search host url.
 * `ES_PORT` - String. Elastic search port number.
 * `ES_INDEX` - String. Elastic search index to store the results.
+* `SKIP_PUSH` - String. Flag to skip pushes true/false.
+* `PULL_LAYERS` - String (Works with pull only). Images with n number of layers to be pulled.
+* `PULL_REPO_PREFIX` - String (Works with pull only). Prefix of the existing pull repo that has [image tags in this format](https://quay.io/repository/clair-load-test/clair-load-test?tab=tags). One can use this script [image_load.sh](https://github.com/vishnuchalla/quay-performance-scripts/blob/master/assets/image_load.sh) to build and push images accordingly.
 * `PUSH_PULL_IMAGE` - Image which contains source code and used in push/pull jobs for testing purposes. Same image that is used for load testing i.e `quay-load` in our case.
+* `CUSTOM_BUILD_IMAGE` -  String. Custom base image to be used for push/pull activities.
 * `PUSH_PUSH_ES_INDEX` - ES index to store quay push/pull results. It is separate as it follows different document structure.
 * `PUSH_PULL_NUMBERS` - The amount of images to do push/pull operations on.
 * `TARGET_HIT_SIZE` - String. Indicates the total amount of requests to hit the system with.
@@ -93,8 +97,8 @@ GET /v2/_catalog # get_catalog method
 GET /api/v1/repository/test/repo_1/permissions/team/team_1 # get_teams_of_organizations_repos method  
 GET /api/v1/repository/test/repo_1/permissions/user/user_1 # get_users_of_organizations_repos method  
 
-### Image push/pulls
-Unfortunately we don’t have any APIs to hit at this moment. So those are tested using podman commands. For n objects we will be creating n jobs representing n users who will be uploading images in parallel with python multiprocessing implemented. Each job uploads and downloads specified number of images (i.e PUSH_PULL_NUMBERS which has default value of 50).
+### PUSH_PULL PHASE
+Enables login using user credentials and supports parallel image push and pull operations through Python multiprocessing. The framework provides flexibility to build images using a custom base image or to skip the push step and pull images directly from an existing repository. This allows for generating and retrieving images with varied custom layers to effectively stress-test the system.
 
 ### DELETE PHASE  
 > **NOTE**: n is number of objects/requests here

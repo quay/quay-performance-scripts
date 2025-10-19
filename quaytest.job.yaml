@@ -1,0 +1,117 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: quay-perf-test-serviceaccount
+rules:
+- apiGroups: ["extensions", "apps", "batch", "security.openshift.io", "policy"]
+  resources: ["deployments", "jobs", "pods", "services", "jobs/status", "podsecuritypolicies", "securitycontextconstraints"]
+  verbs: ["use", "get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: quay-perf-test-role
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: quay-perf-test-serviceaccount
+subjects:
+- kind: ServiceAccount
+  name: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    quay-perf-test-component: redis
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      quay-perf-test-component: redis
+  template:
+    metadata:
+      labels:
+        quay-perf-test-component: redis
+    spec:
+      containers:
+      - name: redis-master
+        image: registry.access.redhat.com/rhscl/redis-32-rhel7
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    quay-perf-test-component: redis-service
+spec:
+  ports:
+    - port: 6379
+  selector:
+    quay-perf-test-component: redis
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quay-perf-test-orchestrator
+  labels:
+    quay-perf-test-component: orchestrator
+spec:
+  template:
+    spec:
+      containers:
+      - name: python
+        image: quay.io/vchalla/quay-load:latest
+        securityContext:
+          privileged: true
+        env:
+          - name: QUAY_HOST
+            value: <quay-host>
+          - name: QUAY_OAUTH_TOKEN
+            value: <quay-token>
+          - name: QUAY_ORG
+            value: <quay-test-org>
+          - name: ES_HOST
+            value: <es-host>
+          - name: ES_PORT
+            value: <es-port>
+          - name: PYTHONUNBUFFERED
+            value: "0"
+          - name: ES_INDEX
+            value: <es-index>
+          - name: SKIP_PUSH
+            value: "false"
+          - name: PULL_LAYERS
+            value: "100"
+          - name: PULL_REPO_PREFIX
+            value: "quay.io/dummy-repo/itsprefix:tag"
+          - name: PUSH_PULL_IMAGE
+            value: <image-for-testing>
+          - name: PUSH_PULL_ES_INDEX
+            value: <push-pull-es-index>
+          - name: PUSH_PULL_NUMBERS
+            value: <number-of-push-pull-images>
+          - name: TARGET_HIT_SIZE
+            value: <hit-size>
+          - name: CUSTOM_BUILD_IMAGE
+            value: "quay.io/vchalla/bugzooka:latest"
+          - name: TEST_BATCH_SIZE
+            value: "15000"
+          - name: CONCURRENCY
+            value: <concurrency>
+          - name: TEST_NAMESPACE
+            value: <test-namespace>
+          - name: TEST_PHASES
+            value: "LOAD,RUN,PUSH_PULL,DELETE"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "512Mi"
+        imagePullPolicy: Always
+      restartPolicy: Never
+  backoffLimit: 0
