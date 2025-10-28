@@ -1,0 +1,18 @@
+---
+ # quay aggregate metrics
+
+- query: avg(avg_over_time(irate(container_cpu_usage_seconds_total{name!="", namespace="quay-enterprise", container!="POD"}[2m])[{{.elapsed}}:])) by (container)
+  metricName: avg-cpu-quay
+  instant: true
+
+- query: max(max_over_time(irate(container_cpu_usage_seconds_total{name!="", namespace="quay-enterprise", container!="POD"}[2m])[{{.elapsed}}:])) by (container)
+  metricName: max-cpu-quay
+  instant: true
+
+- query: avg(avg_over_time(container_memory_rss{name!="", namespace="quay-enterprise", container!="POD"}[{{.elapsed}}:])) by (container)
+  metricName: avg-memory-quay
+  instant: true
+
+- query: max(avg_over_time(container_memory_rss{name!="", namespace="quay-enterprise", container!="POD"}[{{.elapsed}}:])) by (container)
+  metricName: max-memory-quay
+  instant: true
