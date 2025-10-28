@@ -7,6 +7,7 @@ import platform
 import sys
 import json
 import uuid
+import hashlib
 import multiprocessing as mp
 from endpoints.users import Users
 from endpoints.repositories import Repositories
@@ -14,26 +15,32 @@ from endpoints.teams import Teams
 from endpoints.permissions import Permissions
 from endpoints.tags import Tags
 from config import Config
-from utils.attacker import Attacker
 from utils.util import print_header
-
+from urllib3.exceptions import InsecureRequestWarning
 from statistics import mean
-from subprocess import run, Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 
 import redis
-import yaml
+import requests
+import warnings
 
 from elasticsearch import Elasticsearch, helpers
 from kubernetes import client, config
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Used for executing tests across multiple pods
 redis_client = redis.Redis(host='redis')
 
 
 # Configure Logging
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,  # DEBUG to see HTTP attempts, INFO for progress
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 
 def podman_login(username, password):
     """
@@ -57,278 +64,377 @@ def podman_login(username, password):
     assert p.returncode == 0
 
 
-def podman_create(tags):
+def build_push_delete_single_image(tag, custom_build_image, max_failures=3):
     """
-    Execute podman to build and push all tags from unique images.
+    Build, push, and delete a single image in one flow.
+    Returns statistics dict matching push_single_image format.
     """
-    print_header("Running: Build images using Podman", quantity=len(tags))
-    env_config = Config().get_config()
+    # Build
+    unique_id = str(uuid.uuid4())
+    dockerfile = (
+        f"FROM {custom_build_image if custom_build_image != "" else 'quay.io/jitesoft/alpine'}\n"
+        f"RUN echo {unique_id} > /tmp/key.txt"
+    )
 
-    for n, tag in enumerate(tags):
-
-        # Create a unique Dockerfile
-        unique_id = str(uuid.uuid4())
-        dockerfile = (
-            "FROM quay.io/jitesoft/alpine\n"
-            "RUN echo %s > /tmp/key.txt"
-        ) % unique_id
-
-        # Call Podman to build the Dockerfile
-        cmd = [
-            'podman',
-            'build',
-            '--tag', tag,
-            '--storage-opt', 'overlay.mount_program=/usr/bin/fuse-overlayfs',
-            '--storage-driver', 'overlay',
-            '-f',
-            '-'  # use stdin for Dockerfile content
-        ]
-        p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        output, errors = p.communicate(input=dockerfile.encode('ascii'))
-        try:
-            assert p.returncode == 0
-        except Exception:
-            logging.error("Failed to build image.")
-            logging.error(output)
-            logging.error(errors)
-            raise
-
-        # Status Messages
-        if n % 10 == 0:
-            logging.info("%s/%s images completed building." % (n, len(tags)))
-
-    # TODO: Separate this into its own function
-    print_header("Running: Push images using Podman", quantity=len(tags))
-
-    results = []
-    for n, tag in enumerate(tags):
-
-        # Give failures a few tries as this load test is not always performed
-        # within production quality environments.
-        failure_count = 0
-        success_count = 0
-        max_failures = 3
-
-        while failure_count < max_failures:
-
-            # Call Podman to push the Dockerfile
-            cmd = [
-                'podman',
-                'push',
-                tag,
-                '--tls-verify=false',
-                '--storage-opt', 'overlay.mount_program=/usr/bin/fuse-overlayfs',
-                '--storage-driver', 'overlay',
-            ]
-
-            # Time the Push
-            start_time = datetime.datetime.utcnow()
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-            output, errors = p.communicate()
-            end_time = datetime.datetime.utcnow()
-
-            # Handle Errors
-            try:
-                assert p.returncode == 0
-                success = True
-                success_count = success_count + 1
-            except Exception:
-                success = False
-                failure_count = failure_count + 1
-                logging.info("Failed to push tag: %s" % tag)
-                logging.info("STDOUT: %s" % output)
-                logging.info("STDERR: %s" % errors)
-                logging.info("Retrying. %s/%s failures." % (failure_count, max_failures))
-
-            # Statistics / Data
-            elapsed_time = end_time - start_time
-            data = {
-                'tag': tag,
-                'targets': "image_pushes",
-                'elapsed_time': elapsed_time.total_seconds(),
-                'start_time': start_time,
-                'end_time': end_time,
-                'failure_count': failure_count,
-                'success_count': success_count,
-                'successful': success,
-            }
-            results.append(data)
-
-            if success:
-                break
-
-        # Status Messages
-        if n % 10 == 0:
-            logging.info("Pushing %s/%s images completed." % (n, len(tags)))
-
-    # Write data to Elasticsearch
-    logging.info("Writing 'registry push' results to Elasticsearch")
-    es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
-    docs = []
-    for result in results:
-
-        # Add metadata to the result
-        result['uuid'] = env_config["test_uuid"]
-        result['cluster_name'] = env_config["quay_host"]
-        result['hostname'] = platform.node()
-
-        # Create an Elasticsearch Doc
-        doc = {
-            '_index': env_config["push_pull_es_index"],
-            'type': '_doc',
-            '_source': result
-        }
-        docs.append(doc)
-
-    helpers.bulk(es, docs)  # bulk-push results to elasticsearch
-
-    # Print some useful information
-    elapsed_times = [result['elapsed_time'] for result in results]
-    mean_elapsed_time = mean(elapsed_times)
-    max_elapsed_time = max(elapsed_times)
-    min_elapsed_time = min(elapsed_times)
-    total_pushes = len(results)
-    data = {
-        'durations': {
-            'mean': mean_elapsed_time,
-            'max': max_elapsed_time,
-            'min': min_elapsed_time,
-        },
-        'pushes': {
-            'total': total_pushes
-        }
-    }
-    logging.info('Podman-Push Summary')
-    logging.info(json.dumps(data, sort_keys=True, indent=2))
-
-
-def podman_clear_cache():
-    """
-    Execute podman to remove all created images from the local cache.
-
-    TODO: Discard tags argument
-    """
-    cmd = [
+    build_cmd = [
         'podman',
-        'rmi', '--all',
+        'build',
+        '--tag', tag,
         '--storage-opt', 'overlay.mount_program=/usr/bin/fuse-overlayfs',
         '--storage-driver', 'overlay',
+        '--no-cache',
+        '-f', '-'
     ]
-    p = Popen(cmd, stdout=PIPE)
-    output, _ = p.communicate()
-    assert p.returncode == 0
 
+    p = Popen(build_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    output, errors = p.communicate(input=dockerfile.encode('ascii'))
+    build_success = p.returncode == 0
 
-def podman_pull(tags):
-    """
-    Execute podman to pull all tags and collect relevant statistics.
-    """
-    print_header("Running: Podman Pull all tags")
-    env_config = Config().get_config()
+    if not build_success:
+        logging.error(f"Failed to build image {tag}")
+        logging.error(output.decode())
+        logging.error(errors.decode())
+        return None
 
-    results = []
-    for n, tag in enumerate(tags):
+    # Push with retries
+    failure_count = 0
+    success_count = 0
 
-        cmd = [
-            'podman', 
-            'pull', tag,
+    start_time = datetime.datetime.utcnow()
+    
+    while failure_count < max_failures:
+        push_cmd = [
+            'podman',
+            'push',
+            tag,
             '--tls-verify=false',
             '--storage-opt', 'overlay.mount_program=/usr/bin/fuse-overlayfs',
             '--storage-driver', 'overlay',
         ]
 
-        failure_count = 0
-        success_count = 0
-        max_failures = 3
+        p = Popen(push_cmd, stdout=PIPE, stderr=PIPE)
+        output, errors = p.communicate()
 
-        while failure_count < max_failures:
+        success = p.returncode == 0
+        if success:
+            success_count += 1
+            break
+        else:
+            failure_count += 1
+            logging.info(f"Failed to push tag: {tag}")
+            logging.info(f"STDOUT: {output.decode()}")
+            logging.info(f"STDERR: {errors.decode()}")
+            logging.info(f"Retrying {failure_count}/{max_failures}")
 
-            # Time the Push
-            start_time = datetime.datetime.utcnow()
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-            output, errors = p.communicate()
-            end_time = datetime.datetime.utcnow()
+    end_time = datetime.datetime.utcnow()
 
-            # Handle Errors
-            try:
-                assert p.returncode == 0
-                success = True
-                success_count = success_count + 1
-            except Exception:
-                success = False
-                failure_count = failure_count + 1
-                logging.info("Failed to pull tag: %s" % tag)
-                logging.info("STDOUT: %s" % output)
-                logging.info("STDERR: %s" % errors)
-                logging.info("Retrying. %s/%s failures." % (failure_count, max_failures))
+    # Delete image (always attempt)
+    delete_cmd = [
+        'podman',
+        'rmi',
+        tag,
+        '--force',
+        '--storage-opt', 'overlay.mount_program=/usr/bin/fuse-overlayfs',
+        '--storage-driver', 'overlay',
+    ]
 
-            # Statistics / Data
-            elapsed_time = end_time - start_time
-            data = {
-                'tag': tag,
-                'targets': "image_pulls",
-                'elapsed_time': elapsed_time.total_seconds(),
-                'start_time': start_time,
-                'end_time': end_time,
-                'success_count': success_count,
-                'failure_count': failure_count,
-                'successful': success,
-            }
-            results.append(data)
+    p = Popen(delete_cmd, stdout=PIPE, stderr=PIPE)
+    p.communicate()
 
-            if success:
-                break
+    elapsed_time = (end_time - start_time).total_seconds()
+    
+    return {
+        'tag': tag,
+        'targets': "image_pushes",
+        'elapsed_time': elapsed_time,
+        'start_time': start_time,
+        'end_time': end_time,
+        'failure_count': failure_count,
+        'success_count': success_count,
+        'successful': success,
+    }
 
-        # Status Messages
-        if n % 10 == 0:
-            logging.info("Pulling %s/%s images completed." % (n, len(tags)))
-            podman_clear_cache()
 
-    # Write data to Elasticsearch
-    logging.info("Writing 'registry pull' results to Elasticsearch")
-    es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
-    docs = []
-    for result in results:
+def podman_create(tags, custom_build_image="", concurrency=4):
+    """
+    Build, push, and delete multiple images concurrently using Podman.
+    Each image follows: build -> push -> delete in a single flow.
+    """
+    print_header("Running: Build, Push, and Delete images using Podman", quantity=len(tags))
+    env_config = Config().get_config()
 
-        # Add metadata to the result
-        result['uuid'] = env_config["test_uuid"]
-        result['cluster_name'] = env_config["quay_host"]
-        result['hostname'] = platform.node()
-
-        # Create an Elasticsearch Doc
-        doc = {
-            '_index': env_config["push_pull_es_index"],
-            'type': '_doc',
-            '_source': result
+    # Process all images concurrently (build -> push -> delete)
+    push_results = []
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {
+            executor.submit(build_push_delete_single_image, tag, custom_build_image): tag 
+            for tag in tags
         }
-        docs.append(doc)
+        
+        for n, future in enumerate(as_completed(futures)):
+            result = future.result()
+            
+            # Only add successful results (build_push_delete returns None on build failure)
+            if result is not None:
+                # Add metadata
+                result['uuid'] = env_config["test_uuid"]
+                result['cluster_name'] = env_config["quay_host"]
+                result['hostname'] = platform.node()
+                push_results.append(result)
+            
+            if n % 10 == 0:
+                logging.info(f"{n}/{len(tags)} images completed pushing")
 
-    helpers.bulk(es, docs)  # bulk-push results to elasticsearch
+    # Write results to Elasticsearch
+    logging.info("Writing 'registry push' results to Elasticsearch")
+    es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
+    docs = [{
+        '_index': env_config["push_pull_es_index"],
+        'type': '_doc',
+        '_source': r
+    } for r in push_results]
+    helpers.bulk(es, docs)
 
-    # Print some useful information
-    elapsed_times = [result['elapsed_time'] for result in results]
-    mean_elapsed_time = mean(elapsed_times)
-    max_elapsed_time = max(elapsed_times)
-    min_elapsed_time = min(elapsed_times)
-    total_pushes = len(results)
-    data = {
+    # Print summary
+    elapsed_times = [r['elapsed_time'] for r in push_results]
+    summary = {
         'durations': {
-            'mean': mean_elapsed_time,
-            'max': max_elapsed_time,
-            'min': min_elapsed_time,
+            'mean': mean(elapsed_times),
+            'max': max(elapsed_times),
+            'min': min(elapsed_times),
         },
         'pushes': {
-            'total': total_pushes
+            'total': len(push_results)
         }
     }
-    logging.info('Podman-Pull Summary')
-    logging.info(json.dumps(data, sort_keys=True, indent=2))
+    logging.info('Podman-Push Summary')
+    logging.info(json.dumps(summary, sort_keys=True, indent=2))
+
+
+def get_auth_token(registry, repository, username=None, password=None):
+    """
+    Get authentication token from registry.
+    """
+    auth_url = f"https://{registry}/v2/auth?service={registry}&scope=repository:{repository}:pull"
+    
+    try:
+        if username and password:
+            response = requests.get(auth_url, auth=(username, password), verify=False)
+        else:
+            response = requests.get(auth_url, verify=False)
+        
+        response.raise_for_status()
+        token = response.json().get('token')
+        return token
+    except Exception as e:
+        logging.info(f"Failed to get auth token: {e}")
+        return None
+
+
+def get_image_manifest(registry, repository, tag, token):
+    """
+    Fetch the manifest for a given image tag.
+    Returns manifest JSON and list of layer digests.
+    """
+    manifest_url = f"https://{registry}/v2/{repository}/manifests/{tag}"
+    headers = {
+        'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
+    }
+    
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    
+    try:
+        response = requests.get(manifest_url, headers=headers, verify=False)
+        logging.debug(f"Fetching manifest for {tag}, HTTP {response.status_code}")
+        response.raise_for_status()
+        manifest = response.json()
+        
+        # Extract layer digests
+        layers = []
+        if 'layers' in manifest:
+            layers = [layer['digest'] for layer in manifest['layers']]
+        elif 'fsLayers' in manifest:  # Older manifest format
+            layers = [layer['blobSum'] for layer in manifest['fsLayers']]
+        
+        return layers
+    except Exception as e:
+        logging.error(f"Failed to get manifest for {tag}: {e}")
+        return []
+
+
+def fetch_layer_with_retries(registry, repository, digest, token, max_attempts=3):
+    """
+    Attempt to download a single layer up to max_attempts times.
+    Returns True on success, False on permanent failure.
+    """
+    url = f"https://{registry}/v2/{repository}/blobs/{digest}"
+    headers = {"Authorization": f"Bearer {token}"}
+    attempt = 0
+    while attempt < max_attempts:
+        attempt += 1
+        try:
+            with requests.get(url, headers=headers, stream=True, verify=False) as r:
+                logging.debug(f"Fetching layer {digest}, attempt {attempt}, HTTP {r.status_code}")
+                r.raise_for_status()
+                sha = hashlib.sha256()
+                for chunk in r.iter_content(chunk_size=2 * 1024 * 1024):  # 2MB chunks
+                    if not chunk:
+                        break
+                    sha.update(chunk)  # simulate compute load
+                _ = sha.digest()
+            logging.info(f"Layer {digest} succeeded on attempt {attempt} (HTTP {r.status_code})")
+            return True
+        except Exception as e:
+            logging.warning(f"Layer {digest} attempt {attempt} failed: {e}")
+            if attempt >= max_attempts:
+                logging.error(f"Layer {digest} failed after {max_attempts} attempts: {e}")
+                return False
+
+
+def pull_single_image_http(tag, username=None, password=None, max_failures=3):
+    """
+    Pull image layers over HTTP (no local storage) with per-layer retries.
+    Returns a dict matching your ES schema.
+    """
+    # parse registry/repository:tag
+    try:
+        parts = tag.split('/', 1)
+        registry = parts[0]
+        repo_tag = parts[1]
+        repository, image_tag = repo_tag.rsplit(':', 1)
+    except Exception:
+        logging.info(f"Malformed tag: {tag}")
+        return None
+
+    start_time = datetime.datetime.utcnow()
+
+    # get token and manifest
+    try:
+        token = get_auth_token(registry, repository, username, password)
+    except Exception as e:
+        logging.info(f"Auth/token retrieval failed for {tag}: {e}")
+        return {
+            'tag': tag,
+            'targets': "image_pulls",
+            'elapsed_time': 0.0,
+            'start_time': start_time,
+            'end_time': datetime.datetime.utcnow(),
+            'success_count': 0,
+            'failure_count': 1,
+            'successful': False,
+        }
+
+    digests = get_image_manifest(registry, repository, image_tag, token)
+    if not digests:
+        end_time = datetime.datetime.utcnow()
+        elapsed_time = (end_time - start_time).total_seconds()
+        return {
+            'tag': tag,
+            'targets': "image_pulls",
+            'elapsed_time': elapsed_time,
+            'start_time': start_time,
+            'end_time': end_time,
+            'success_count': 0,
+            'failure_count': 1,
+            'successful': False,
+        }
+
+    success_count = 0
+    failure_count = 0
+
+    # Submit layer fetch tasks (each task includes its own retry logic)
+    with ThreadPoolExecutor(max_workers=6) as layer_pool:
+        futures = {
+            layer_pool.submit(fetch_layer_with_retries, registry, repository, d, token, max_failures): d
+            for d in digests
+        }
+        for fut in as_completed(futures):
+            ok = fut.result()
+            if not ok:
+                failure_count += 1
+
+    if failure_count == 0:
+        success_count = 1
+    end_time = datetime.datetime.utcnow()
+    elapsed_time = (end_time - start_time).total_seconds()
+
+    return {
+        'tag': tag,
+        'targets': "image_pulls",
+        'elapsed_time': elapsed_time,
+        'start_time': start_time,
+        'end_time': end_time,
+        'success_count': success_count,
+        'failure_count': failure_count,
+        'successful': (success_count == len(digests)),
+    }
+
+
+def podman_pull(tags, concurrency, username=None, password=None):
+    """
+    Pull multiple images concurrently using HTTP layer fetches with retries,
+    and write results to Elasticsearch using the same document format.
+    """
+    logging.info("Running: HTTP-based image pull for all tags")
+    env_config = Config().get_config()
+
+    results = []
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {
+            executor.submit(pull_single_image_http, tag, username, password): tag
+            for tag in tags
+        }
+        for n, fut in enumerate(as_completed(futures)):
+            result = fut.result()
+            if result is None:
+                continue
+
+            # Add metadata consistent with previous schema
+            result['uuid'] = env_config["test_uuid"]
+            result['cluster_name'] = env_config["quay_host"]
+            result['hostname'] = platform.node()
+
+            results.append(result)
+
+            if n % 10 == 0:
+                logging.info(f"Pulling {n}/{len(tags)} images completed.")
+
+    # Write results to Elasticsearch
+    logging.info("Writing 'registry pull' results to Elasticsearch")
+    es = Elasticsearch([env_config["es_host"]], port=env_config["es_port"])
+    docs = [{
+        '_index': env_config["push_pull_es_index"],
+        'type': '_doc',
+        '_source': r
+    } for r in results]
+    helpers.bulk(es, docs)
+
+    # Summary logging (same fields as earlier)
+    if results:
+        elapsed_times = [r['elapsed_time'] for r in results]
+        summary = {
+            'durations': {
+                'mean': mean(elapsed_times),
+                'max': max(elapsed_times),
+                'min': min(elapsed_times),
+            },
+            'pulls': {
+                'total': len(results)
+            }
+        }
+    else:
+        summary = {'durations': {}, 'pulls': {'total': 0}}
+
+    logging.info('HTTP-Pull Summary')
+    logging.info(json.dumps(summary, sort_keys=True, indent=2))
 
 
 def test_pull(num_tags):
 
     username = os.environ.get('QUAY_USERNAME')
     password = os.environ.get('QUAY_PASSWORD')
+    concurrency = int(os.environ.get('CONCURRENCY'))
 
     assert username, 'Ensure QUAY_USERNAME is set on this job.'
     assert password, 'Ensure QUAY_PASSWORD is set on this job.'
@@ -340,9 +446,8 @@ def test_pull(num_tags):
             tags.append(tag.decode('utf-8'))
 
     if tags:
-        podman_login(username, password)
         logging.info("Pulling %s tags", len(tags))
-        podman_pull(tags)
+        podman_pull(tags, concurrency, username, password)
         logging.info("Finished pulling batch.")
     
     else:
@@ -353,6 +458,8 @@ def test_push(num_tags):
 
     username = os.environ.get('QUAY_USERNAME')
     password = os.environ.get('QUAY_PASSWORD')
+    concurrency = int(os.environ.get('CONCURRENCY'))
+    custom_build_image = os.environ.get('CUSTOM_BUILD_IMAGE', '')
 
     assert username, 'Ensure QUAY_USERNAME is set on this job.'
     assert password, 'Ensure QUAY_PASSWORD is set on this job.'
@@ -366,7 +473,7 @@ def test_push(num_tags):
     if tags:
         podman_login(username, password)
         logging.info("Creating and pushing %s tags", len(tags))
-        podman_create(tags)
+        podman_create(tags, custom_build_image, concurrency)
         logging.info("Finished pushing batch.")
     
     else:
@@ -374,7 +481,8 @@ def test_push(num_tags):
 
 
 def create_test_push_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count, image, target_hit_size):
+                            test_uuid, token, batch_size, tag_count, image, 
+                            custom_build_image, target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
     off the queue and perform the podman build + podman push action on them.
@@ -391,6 +499,7 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='CONCURRENCY', value=str(concurrency)),
         client.V1EnvVar(name='TARGET_HIT_SIZE', value=str(target_hit_size)),
         client.V1EnvVar(name='PUSH_PULL_IMAGE', value=image),
+        client.V1EnvVar(name='CUSTOM_BUILD_IMAGE', value=custom_build_image),
         client.V1EnvVar(name='PUSH_PULL_ES_INDEX', value=env_config["push_pull_es_index"]),
         client.V1EnvVar(name='PUSH_PULL_NUMBERS', value=str(env_config["push_pull_numbers"])),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
@@ -407,8 +516,8 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
     resource_requirements = client.V1ResourceRequirements(
         requests={
-            'cpu': '1',
-            'memory': '512Mi',
+            'cpu': '1m',
+            'memory': '10Mi',
         }
     )
 
@@ -447,7 +556,8 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
 
 def create_test_pull_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count, image, target_hit_size):
+                            test_uuid, token, batch_size, tag_count, image,
+                            target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
     off the queue and perform the podman pull action on them.
@@ -480,8 +590,8 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
 
     resource_requirements = client.V1ResourceRequirements(
         requests={
-            'cpu': '1',
-            'memory': '512Mi',
+            'cpu': '1m',
+            'memory': '10Mi',
         }
     )
 
@@ -546,7 +656,8 @@ def parallel_process(user, **kwargs):
     if common_args['skip_push'] != "true":
         create_test_push_job(common_args['namespace'], common_args['quay_host'], user,
         common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'],
-        common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
+        common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['custom_build_image'],
+        common_args['target_hit_size'])
         time.sleep(60)  # Give the Job time to start
         while True:
             # Check Job Status
@@ -564,9 +675,10 @@ def parallel_process(user, **kwargs):
             time.sleep(60 * 1)  # 1 minute
 
     # Start the Registry Pull Test job
-    create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, 
-    common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
-    common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['target_hit_size'])
+    create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, common_args['password'], 
+                         common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
+                         common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], 
+                         common_args['target_hit_size'])
     time.sleep(60)  # Give the Job time to start
     while True:
 
@@ -607,12 +719,6 @@ if __name__ == '__main__':
     # Generate a new prefix for user, repository, and team names on each run.
     # This is to avoid name collisions in the case of a re-run.
     PREFIX = env_config["test_uuid"][-4:]
-
-    # Avoid p_thread exception in currently used Dockerfile base image
-    # TODO: Remove this when Alpine + Podman is fixed to avoid leaving
-    #       fuse-overlayfs processses around, or when the base image is changed.
-    if env_config["batch_size"] > 400:
-        raise Exception("Max BATCH_SIZE is 400. Given: {}", env_config["batch_size"])
 
     # Ensure a directory exists for writing test results
     if not os.path.isdir(env_config["log_directory"]):
@@ -659,13 +765,17 @@ if __name__ == '__main__':
         for tag in explicit_tags:
             tags.append(tag)
     else:
-        for i, repo_size in enumerate(repo_sizes):
-            repo = repos_with_data[i]
-            repo_tags = [
-                '%s/%s/%s:%s' % (env_config["quay_host"], organization, repo, n)
-                for n in range(0, repo_size)
-            ]
-            tags.extend(repo_tags)
+        if env_config["skip_push"] == "true" and int(env_config["pull_layers"]) > 0 and env_config["pull_repo_prefix"] != "":
+            for i in range(1, int(env_config["push_pull_numbers"]) + 1):
+                tags.append('%s_layers_%s_tag_%s' % (env_config["pull_repo_prefix"], env_config["pull_layers"], i))
+        else:
+            for i, repo_size in enumerate(repo_sizes):
+                repo = repos_with_data[i]
+                repo_tags = [
+                    '%s/%s/%s:%s' % (env_config["quay_host"], organization, repo, n)
+                    for n in range(0, repo_size)
+                ]
+                tags.extend(repo_tags)
 
     print_header(
         'Running Quay Scale & Performance Tests',
@@ -680,6 +790,10 @@ if __name__ == '__main__':
         concurrency=env_config["concurrency"],
         repos_with_tags_sizes=repo_sizes,
         total_tags=len(tags),
+        test_phases=env_config['test_phases'],
+        skip_push=env_config['skip_push'],
+        pull_layers=env_config['pull_layers'],
+        pull_repo_prefix=env_config['pull_repo_prefix'],
         pull_push_batch_size=env_config["batch_size"],
     )
 
@@ -699,7 +813,10 @@ if __name__ == '__main__':
     "tags": tags,
     "push_pull_image": env_config["push_pull_image"],
     "target_hit_size": env_config["target_hit_size"],
-    "skip_push": env_config["skip_push"]
+    "skip_push": env_config["skip_push"],
+    "pull_layers": env_config["pull_layers"],
+    "pull_repo_prefix": env_config["pull_repo_prefix"],
+    "custom_build_image": env_config["custom_build_image"]
     }
 
     if ('push_pull' in phases_list):

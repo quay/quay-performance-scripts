@@ -7,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Install necessary libraries for subsequent commands
 RUN apt-get update && \
-    apt-get install -y software-properties-common python3.6 python3-venv python3-pip python3-apt wget git dumb-init podman redis-server
+    apt-get install -y software-properties-common python3.6 python3-venv python3-pip python3-apt wget git dumb-init podman skopeo redis-server
 
 # Create and activate virtual environment
 RUN python3 -m venv /opt/venv

@@ -27,6 +27,9 @@ class Config:
             'es_port': os.environ.get('ES_PORT'),
             'es_index': os.environ.get('ES_INDEX'),
             'push_pull_image': os.environ.get('PUSH_PULL_IMAGE'),
+            'custom_build_image': os.environ.get('CUSTOM_BUILD_IMAGE', ''),
+            'pull_layers': int(os.environ.get('PULL_LAYERS', 0)),
+            'pull_repo_prefix': os.environ.get('PULL_REPO_PREFIX', ''),
             'push_pull_es_index': os.environ.get('PUSH_PULL_ES_INDEX'),
             'push_pull_numbers': int(os.environ.get("PUSH_PULL_NUMBERS", 50)),
             'concurrency': int(os.environ.get("CONCURRENCY", 50)),
@@ -36,7 +39,7 @@ class Config:
             'base_url': '%s://%s' % ("https", os.environ.get("QUAY_HOST")),
             'test_phases': os.environ.get('TEST_PHASES'),
             'tags': os.environ.get('TAGS'),
-            'skip_push': os.environ.get('SKIP_PUSH')
+            'skip_push': os.environ.get('SKIP_PUSH', 'false')
         }
         self.validate_config()
         return self.config

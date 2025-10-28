@@ -84,6 +84,12 @@ spec:
             value: "0"
           - name: ES_INDEX
             value: <es-index>
+          - name: SKIP_PUSH
+            value: "false"
+          - name: PULL_LAYERS
+            value: "100"
+          - name: PULL_REPO_PREFIX
+            value: "quay.io/dummy-repo/itsprefix:tag"
           - name: PUSH_PULL_IMAGE
             value: <image-for-testing>
           - name: PUSH_PULL_ES_INDEX
@@ -95,13 +101,13 @@ spec:
           - name: CUSTOM_BUILD_IMAGE
             value: "quay.io/vchalla/bugzooka:latest"
           - name: TEST_BATCH_SIZE
-            value: "1"
+            value: "15000"
           - name: CONCURRENCY
             value: <concurrency>
           - name: TEST_NAMESPACE
             value: <test-namespace>
           - name: TEST_PHASES
-            value: "LOAD,RUN,DELETE"
+            value: "LOAD,RUN,PUSH_PULL,DELETE"
         resources:
           requests:
             cpu: "1"
