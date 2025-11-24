@@ -13,6 +13,6 @@
   metricName: avg-memory-quay
   instant: true
 
-- query: max(avg_over_time(container_memory_rss{name!="", namespace="quay-enterprise", container!="POD"}[{{.elapsed}}:])) by (container)
+- query: max(max_over_time(container_memory_rss{name!="", namespace="quay-enterprise", container!="POD"}[{{.elapsed}}:])) by (container)
   metricName: max-memory-quay
   instant: true
