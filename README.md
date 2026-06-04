@@ -20,7 +20,7 @@ The test suite is designed to run on openshift platform using a simple configura
   permissions (checkboxes) granted. Hold on to this token as it will be used
   later.
 - Once after the quay application is deployed. Do a `pg_dump` in the quay postgres pod to capture the initial snapshot into a sql file and keep it copied at `assets/quaydb.sql`.
-- An elasticsearch cluster is needed to store results. You can spin one using the [Operator](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-eck.html)
+- (Optional) An elasticsearch cluster to store results. You can spin one using the [Operator](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-eck.html). If ES is not available, results are written to local JSON files on a PVC.
 
 ## Running tests
 
@@ -45,15 +45,16 @@ Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshi
 * `QUAY_HOST` - Sting. Indicating quay host url to perform testing.
 * `QUAY_OAUTH_TOKEN` - String. Application oauth token created in the prerequisites step.
 * `QUAY_ORG`- String. Specifies the test organization.
-* `ES_HOST` - String. Elastic search host url.
-* `ES_PORT` - String. Elastic search port number.
-* `ES_INDEX` - String. Elastic search index to store the results.
+* `ES_HOST` - String. (Optional) Elastic search host url. If not set, results are written to local JSON files only.
+* `ES_PORT` - String. (Optional) Elastic search port number.
+* `ES_INDEX` - String. (Optional) Elastic search index to store the results.
+* `RESULTS_DIR` - String. (Optional) Directory to write local result JSON files. Defaults to `./results`.
 * `SKIP_PUSH` - String. Flag to skip pushes true/false.
 * `PULL_LAYERS` - String (Works with pull only). Images with n number of layers to be pulled.
 * `PULL_REPO_PREFIX` - String (Works with pull only). Prefix of the existing pull repo that has [image tags in this format](https://quay.io/repository/clair-load-test/clair-load-test?tab=tags). One can use this script [image_load.sh](https://github.com/vishnuchalla/quay-performance-scripts/blob/master/assets/image_load.sh) to build and push images accordingly.
 * `PUSH_PULL_IMAGE` - Image which contains source code and used in push/pull jobs for testing purposes. Same image that is used for load testing i.e `quay-load` in our case.
 * `CUSTOM_BUILD_IMAGE` -  String. Custom base image to be used for push/pull activities.
-* `PUSH_PUSH_ES_INDEX` - ES index to store quay push/pull results. It is separate as it follows different document structure.
+* `PUSH_PULL_ES_INDEX` - (Optional) ES index to store quay push/pull results. It is separate as it follows different document structure.
 * `PUSH_PULL_NUMBERS` - The amount of images to do push/pull operations on.
 * `TARGET_HIT_SIZE` - String. Indicates the total amount of requests to hit the system with.
 * `CONCURRENCY` - String. Indicates the rate(concurrency) at which the requests hits must happen in parallel.
@@ -61,6 +62,27 @@ Now once we have the system ready, Deploy `deploy/test.job.yaml` on your openshi
 * `TEST_PHASES` - String. Comma separated string containing list of phases. Valid phases are LOAD, RUN and DELETE. Example: LOAD,DELETE
 
 This should spin up a redis pod and a test orchestrator pod in your desired namespace and start running the tests. Tail the pod logs for more info.
+
+### Running without Elasticsearch
+
+Elasticsearch is optional. When ES env vars (`ES_HOST`, `ES_PORT`, `ES_INDEX`, `PUSH_PULL_ES_INDEX`) are not set, all results are written to local JSON files instead. The default `deploy/test.job.yaml` includes a PVC (`quay-perf-results`, 1Gi) mounted at `/results` for persistent storage.
+
+```bash
+oc apply -f deploy/test.job.yaml -n <namespace>
+```
+
+After the test completes, retrieve results from the PVC:
+```bash
+oc run pvc-reader --image=busybox --restart=Never -n <namespace> \
+  --overrides='{"spec":{"containers":[{"name":"pvc-reader","image":"busybox","command":["sleep","3600"],"volumeMounts":[{"name":"results","mountPath":"/results"}]}],"volumes":[{"name":"results","persistentVolumeClaim":{"claimName":"quay-perf-results"}}]}}'
+oc cp <namespace>/pvc-reader:/results ./results
+oc delete pod pvc-reader -n <namespace>
+```
+
+Result files:
+- `<uuid>_push_results.json` — per-image push timings with summary
+- `<uuid>_pull_results.json` — per-image pull timings with summary
+- `./logs/<uuid>_<test>_result.json` — Vegeta per-second timeseries (always written)
 
 ### More about tests
 

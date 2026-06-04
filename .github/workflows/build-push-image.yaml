@@ -1,0 +1,41 @@
+name: Build and Push Container Image
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine image tags
+        id: tags
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          echo "tags=latest $GIT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: quay-load
+          context: .
+          tags: ${{ steps.tags.outputs.tags }}
+          containerfiles: |
+            ./Dockerfile
+          platforms: linux/amd64
+
+      - name: Push image to Quay.io
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: quay.io/${{ vars.QUAY_IMAGE_NAMESPACE || 'projectquay' }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}

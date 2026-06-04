@@ -23,14 +23,15 @@ class Config:
             'quay_org': os.environ.get("QUAY_ORG"),
             'test_uuid': os.environ.get('TEST_UUID'),
             'auth_token': os.environ.get("QUAY_OAUTH_TOKEN"),
-            'es_host': os.environ.get('ES_HOST'),
-            'es_port': os.environ.get('ES_PORT'),
-            'es_index': os.environ.get('ES_INDEX'),
+            'es_host': os.environ.get('ES_HOST', ''),
+            'es_port': os.environ.get('ES_PORT', ''),
+            'es_index': os.environ.get('ES_INDEX', ''),
             'push_pull_image': os.environ.get('PUSH_PULL_IMAGE'),
             'custom_build_image': os.environ.get('CUSTOM_BUILD_IMAGE', ''),
             'pull_layers': int(os.environ.get('PULL_LAYERS', 0)),
             'pull_repo_prefix': os.environ.get('PULL_REPO_PREFIX', ''),
-            'push_pull_es_index': os.environ.get('PUSH_PULL_ES_INDEX'),
+            'push_pull_es_index': os.environ.get('PUSH_PULL_ES_INDEX', ''),
+            'results_directory': os.environ.get('RESULTS_DIR', './results'),
             'push_pull_numbers': int(os.environ.get("PUSH_PULL_NUMBERS", 50)),
             'concurrency': int(os.environ.get("CONCURRENCY", 50)),
             'target_hit_size': int(os.environ.get('TARGET_HIT_SIZE')),
@@ -52,11 +53,7 @@ class Config:
         assert self.config["quay_org"], "QUAY_ORG is not set"
         assert self.config["test_uuid"], "TEST_UUID is not set"
         assert self.config["auth_token"], "AUTH_TOKEN is not set"
-        assert self.config["es_host"], "ES_HOST is not set"
-        assert self.config["es_port"], "ES_PORT is not set"
-        assert self.config["es_index"], "ES_INDEX is not set"
         assert self.config["push_pull_image"], "PUSH_PULL_IMAGE is not set"
-        assert self.config["push_pull_es_index"], "PUSH_PULL_INDEX is not set"
         assert self.config["push_pull_numbers"], "PUSH_PULL_NUMBERS is not set"
         assert isinstance(self.config["concurrency"], int), "CONCURRENCY is not an integer"
         assert self.config["target_hit_size"], "TARGET_HIT_SIZE is not set"

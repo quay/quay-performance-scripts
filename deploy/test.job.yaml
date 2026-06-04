@@ -27,7 +27,7 @@ metadata:
   labels:
     quay-perf-test-component: redis
 spec:
-  replicas: 1 
+  replicas: 1
   selector:
     matchLabels:
       quay-perf-test-component: redis
@@ -80,14 +80,16 @@ spec:
             value: <es-host>
           - name: ES_PORT
             value: <es-port>
-          - name: PYTHONUNBUFFERED
-            value: "0"
           - name: ES_INDEX
             value: <es-index>
-          - name: PUSH_PULL_IMAGE
-            value: <image-for-testing>
           - name: PUSH_PULL_ES_INDEX
             value: <push-pull-es-index>
+          - name: PYTHONUNBUFFERED
+            value: "0"
+          - name: RESULTS_DIR
+            value: "/results"
+          - name: PUSH_PULL_IMAGE
+            value: <image-for-testing>
           - name: PUSH_PULL_NUMBERS
             value: <number-of-push-pull-images>
           - name: TARGET_HIT_SIZE
@@ -102,10 +104,28 @@ spec:
             value: <test-namespace>
           - name: TEST_PHASES
             value: "LOAD,RUN,DELETE"
+        volumeMounts:
+          - name: test-results
+            mountPath: /results
         resources:
           requests:
             cpu: "1"
             memory: "512Mi"
         imagePullPolicy: Always
+      volumes:
+        - name: test-results
+          persistentVolumeClaim:
+            claimName: quay-perf-results
       restartPolicy: Never
   backoffLimit: 0
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: quay-perf-results
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
