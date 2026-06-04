@@ -98,23 +98,26 @@ class Attacker:
         assert p.returncode == 0
         logging.info('Results for test %s written to file: %s' % (test_name, result_filename))
 
-        # Use Snafu to push results to Elasticsearch
-        logging.info("Recording test results in ElasticSearch: %s", env_config["es_host"])
-        cmd = [
-            'run_snafu',
-            '-t', 'vegeta',
-            '-u', env_config["test_uuid"],
-            '-w', str(env_config["concurrency"]),
-            '-r', result_filename,
-            # '--target_name', target_name,
-            '--target_name', test_name,
-        ]
-        snafu_env = os.environ.copy()
-        snafu_env['es'] = env_config["es_host"]
-        snafu_env['es_port'] = env_config["es_port"]
-        snafu_env['es_index'] = env_config["es_index"]
-        snafu_env['clustername'] = env_config["quay_host"]
-        p = Popen(cmd, stdout=PIPE, stderr=STDOUT, env=snafu_env)
-        output, _ = p.communicate()
-        logging.info(output)
-        assert p.returncode == 0
+        # Use Snafu to push results to Elasticsearch (if configured)
+        if env_config["es_host"]:
+            logging.info("Recording test results in ElasticSearch: %s", env_config["es_host"])
+            cmd = [
+                'run_snafu',
+                '-t', 'vegeta',
+                '-u', env_config["test_uuid"],
+                '-w', str(env_config["concurrency"]),
+                '-r', result_filename,
+                # '--target_name', target_name,
+                '--target_name', test_name,
+            ]
+            snafu_env = os.environ.copy()
+            snafu_env['es'] = env_config["es_host"]
+            snafu_env['es_port'] = env_config["es_port"]
+            snafu_env['es_index'] = env_config["es_index"]
+            snafu_env['clustername'] = env_config["quay_host"]
+            p = Popen(cmd, stdout=PIPE, stderr=STDOUT, env=snafu_env)
+            output, _ = p.communicate()
+            logging.info(output)
+            assert p.returncode == 0
+        else:
+            logging.info("ES not configured — vegeta results saved to local file only: %s", result_filename)
