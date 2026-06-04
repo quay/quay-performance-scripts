@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
       - name: Determine image tags
         id: tags
         env:
@@ -29,7 +32,7 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           containerfiles: |
             ./Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
       - name: Push image to Quay.io
         uses: redhat-actions/push-to-registry@v2

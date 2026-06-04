@@ -12,10 +12,16 @@ RUN dnf install -y --nodocs \
  && rm -rf /var/cache/dnf
 
 # Install vegeta for HTTP benchmarking
-RUN wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8.3-linux-amd64.tar.gz \
- && tar -xzf vegeta-12.8.3-linux-amd64.tar.gz \
+RUN ARCH=$(uname -m) && \
+    case "$ARCH" in \
+      x86_64)  VEGETA_ARCH="amd64" ;; \
+      aarch64) VEGETA_ARCH="arm64" ;; \
+      *)       echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    wget https://github.com/tsenart/vegeta/releases/download/v12.8.3/vegeta-12.8.3-linux-${VEGETA_ARCH}.tar.gz \
+ && tar -xzf vegeta-12.8.3-linux-${VEGETA_ARCH}.tar.gz \
  && mv vegeta /usr/local/bin/vegeta \
- && rm -rf vegeta-12.8.3-linux-amd64.tar.gz
+ && rm -rf vegeta-12.8.3-linux-${VEGETA_ARCH}.tar.gz
 
 # Install and setup snafu for storing vegeta results into ES
 RUN mkdir -p /opt/snafu/ \

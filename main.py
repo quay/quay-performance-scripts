@@ -100,7 +100,7 @@ def build_push_delete_single_image(tag, custom_build_image, max_failures=3):
     # Build
     unique_id = str(uuid.uuid4())
     dockerfile = (
-        f"FROM {custom_build_image if custom_build_image != "" else 'quay.io/jitesoft/alpine'}\n"
+        f"FROM {custom_build_image if custom_build_image != '' else 'quay.io/jitesoft/alpine'}\n"
         f"RUN echo {unique_id} > /tmp/key.txt"
     )
 
