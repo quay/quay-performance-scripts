@@ -481,7 +481,7 @@ def test_push(num_tags):
 
 
 def create_test_push_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count, image, 
+                            test_uuid, batch_size, tag_count, image,
                             custom_build_image, target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
@@ -504,7 +504,6 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='PUSH_PULL_NUMBERS', value=str(env_config["push_pull_numbers"])),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
         client.V1EnvVar(name='TEST_NAMESPACE', value=namespace),
-        client.V1EnvVar(name='QUAY_OAUTH_TOKEN', value=token),
         client.V1EnvVar(name='QUAY_TEST_NAME', value='push'),
         client.V1EnvVar(name='QUAY_ORG', value=env_config["quay_org"]),
         client.V1EnvVar(name='TEST_BATCH_SIZE', value=str(batch_size)),
@@ -556,7 +555,7 @@ def create_test_push_job(namespace, quay_host, username, password, concurrency,
 
 
 def create_test_pull_job(namespace, quay_host, username, password, concurrency,
-                            test_uuid, token, batch_size, tag_count, image,
+                            test_uuid, batch_size, tag_count, image,
                             target_hit_size):
     """
     Create a Kubernetes Job Batch where each job will pull <batch_size> items
@@ -578,7 +577,6 @@ def create_test_pull_job(namespace, quay_host, username, password, concurrency,
         client.V1EnvVar(name='PUSH_PULL_NUMBERS', value=str(env_config["push_pull_numbers"])),
         client.V1EnvVar(name='TEST_UUID', value=test_uuid),
         client.V1EnvVar(name='TEST_NAMESPACE', value=namespace),
-        client.V1EnvVar(name='QUAY_OAUTH_TOKEN', value=token),
         client.V1EnvVar(name='QUAY_TEST_NAME', value='pull'),
         client.V1EnvVar(name='QUAY_ORG', value=env_config["quay_org"]),
         client.V1EnvVar(name='TEST_BATCH_SIZE', value=str(batch_size)),
@@ -655,7 +653,7 @@ def parallel_process(user, **kwargs):
     # Start the Registry Push Test job
     if common_args['skip_push'] != "true":
         create_test_push_job(common_args['namespace'], common_args['quay_host'], user,
-        common_args['password'], common_args['concurrency'], common_args['uuid'], common_args['auth_token'],
+        common_args['password'], common_args['concurrency'], common_args['uuid'],
         common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], common_args['custom_build_image'],
         common_args['target_hit_size'])
         time.sleep(60)  # Give the Job time to start
@@ -675,9 +673,9 @@ def parallel_process(user, **kwargs):
             time.sleep(60 * 1)  # 1 minute
 
     # Start the Registry Pull Test job
-    create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, common_args['password'], 
-                         common_args['concurrency'], common_args['uuid'], common_args['auth_token'], 
-                         common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'], 
+    create_test_pull_job(common_args['namespace'], common_args['quay_host'], user, common_args['password'],
+                         common_args['concurrency'], common_args['uuid'],
+                         common_args['batch_size'], len(common_args['tags']), common_args['push_pull_image'],
                          common_args['target_hit_size'])
     time.sleep(60)  # Give the Job time to start
     while True:
@@ -808,7 +806,6 @@ if __name__ == '__main__':
     "quay_host": env_config["quay_host"],
     "concurrency": env_config["concurrency"],
     "uuid": env_config["test_uuid"],
-    "auth_token": env_config["auth_token"],
     "batch_size": env_config["batch_size"],
     "tags": tags,
     "push_pull_image": env_config["push_pull_image"],
@@ -829,6 +826,8 @@ if __name__ == '__main__':
         end_time = datetime.datetime.utcnow()
         logging.info(f"Ending image push/pulls (UTC): {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')}")
         exit(0)
+
+    assert env_config["auth_token"], "QUAY_OAUTH_TOKEN is not set. Required for load/run/delete phases."
 
     # Load Phase
     # These tests should run before container images are pushed

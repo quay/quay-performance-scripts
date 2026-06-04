@@ -51,7 +51,6 @@ class Config:
         assert self.config["quay_host"], "QUAY_HOST is not set"
         assert self.config["quay_org"], "QUAY_ORG is not set"
         assert self.config["test_uuid"], "TEST_UUID is not set"
-        assert self.config["auth_token"], "AUTH_TOKEN is not set"
         assert self.config["es_host"], "ES_HOST is not set"
         assert self.config["es_port"], "ES_PORT is not set"
         assert self.config["es_index"], "ES_INDEX is not set"
