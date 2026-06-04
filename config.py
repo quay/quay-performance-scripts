@@ -52,7 +52,6 @@ class Config:
         assert self.config["quay_host"], "QUAY_HOST is not set"
         assert self.config["quay_org"], "QUAY_ORG is not set"
         assert self.config["test_uuid"], "TEST_UUID is not set"
-        assert self.config["auth_token"], "AUTH_TOKEN is not set"
         assert self.config["push_pull_image"], "PUSH_PULL_IMAGE is not set"
         assert self.config["push_pull_numbers"], "PUSH_PULL_NUMBERS is not set"
         assert isinstance(self.config["concurrency"], int), "CONCURRENCY is not an integer"
