@@ -32,17 +32,22 @@ Before running the infra scripts, you need to:
     ```
 
 1. You need to set the following **REQUIRED** variables (as environment variables prefixing with `TF_VAR_` or variables in `terraform.tfvars`)
-    * `prefix` : Make sure it's unique else, it will clash with other envs
-    * `rds_vpc_cidr` : Pick an unused CIDR in the range `172.16.. - 172.29..` (defaults to `172.31.0.0/16`)
+    * `prefix` : Make sure it's unique else (primary and secondary should use different prefix), it will clash with other envs.
+    * `quay_vpc_cidr` : Pick an unused CIDR in the range `172.16.. - 172.29..` (defaults to `172.31.0.0/16`)
     * `db_password` : The password that will be set on the quay and clair RDS DBs
     * `deploy_type`: `primary` or `secondary` this is useful for multi-region setup (default `primary`)
-    * `region` : AWS region to use for deployment (default `us-east-1`)
-    * `openshift_vpc_id` : VPC ID where openshift is deployed (used for creating peering)
+    * `region` : AWS region to use for deployment (default `us-east-1` used for primary). secondary should use `us-east-2`
+    * `openshift_vpc_id` : VPC ID where openshift is deployed (used for creating peering). Both primary and secondary region use different VPCs. Each of these can be found by looking at the VPCs where the corresponding OCP clusters are deployed 
     * `openshift_cidrs`: CIDRs for openshift access to RDS (check the Openshift VPC to get this value)
+    * For builders, set: `builder_access_key`, `builder_secret_key` and `builder_ssh_keypair` (points to the ssh kepair set on AWS UI console)
+    * If we want to use clair, set variables: `enable_clair=true`, `clair_image` and `clair_db_version=<postgres db version>` 
+    * `kube_context`: cluster's currently active context in your kubeconfig file (can be obtained via `oc config current-context`)
+    * `redis_azs`: defines availability zones for redis. primary uses `["us-east-1a", "us-east-1b"]` and secondary uses `["us-east-2a", "us-east-2b"]`
+    * `dns_domain`: DNS name for hosted quay. It uses `<prefix>.<custom-dns-name>` format
 
-1. If you are deploying a **secondary** region you'll also have to add the following **REQUIRED** variables
+1. If you are deploying a **secondary** region you'll also have to add the following **REQUIRED** variables in addition to above variables.
     * `primary_s3_bucket_arn`: ARN of the S3 bucket created in primary region. This will be used for setting up replication
-    * `primary_db_arn`: ARM of the DB created in the primary region. This will be used for setting up replication
+    * `primary_db_arn`: ARM of the DB (Global instance) created in the primary region. This will be used for setting up replication
     * `primary_db_hostname`: Hostname of the primary DB, used for setting up the service key when using the secondary deployment
     * `primary_db_password`: Password of the primary DB, used for setting up the service key when using the secondary deployment
    
@@ -54,6 +59,8 @@ Before running the infra scripts, you need to:
     * `builder_ssh_keypair`: SSH Keypair created to access the build VMs (should be created prior to deploy)
     * `builder_access_key`: AWS access key for builder. Used to createEC2 VMs for building
     * `builder_secret_key`: AWS Secret key for builder. Used to createEC2 VMs for building
+    * `enable_monitoring=true`: If we want to setup prometheus and grafana
+        > **NOTE** The grafana dashboards can be made available by importing grafana JSON files. These file can obtained via app-interface repo. Make sure to **exclude** quay.io production related configurations.
 
 1. If using an env file like the examples given, set the environment variables in the current shell `source envs/example-primary.env`.
     > **NOTE** The example env file sets the `kube_context` with the command `oc config current-context` so the OCP cluster needs to be logged into first before sourcing the environment file.
@@ -78,6 +85,8 @@ Before running the infra scripts, you need to:
     $ oc project <prefix>-quay
     $ oc get route
     ```
+
+12. Before setting up secondary cluster, run `oc login <secondary-ocp-cluster>` and run `source envs/example-secondary.env` to ensure correct variables are set
     
 ## Cleaning up
 
@@ -94,7 +103,7 @@ $ terraform workspace select secondary
 $ terraform destroy
 $ terraform workspace select primary
 $ oc login --token="" --server="" # login back in to OCP in primary region
-$ source envs/examply-primary.env # Set the correct variables for primary region
+$ source envs/example-primary.env # Set the correct variables for primary region
 $ terraform destroy
 ```
 

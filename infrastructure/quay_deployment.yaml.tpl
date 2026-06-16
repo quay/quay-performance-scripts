@@ -582,7 +582,7 @@ spec:
       - name: prometheus
         image: ${prometheus_image}
         args:
-          - '--storage.tsdb.retention=6h'
+          - '--storage.tsdb.retention.time=6h'
           - '--storage.tsdb.path=/prometheus'
           - '--config.file=/etc/prometheus/prometheus.yml'
         ports:
