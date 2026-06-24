@@ -264,6 +264,17 @@ def get_auth_token(registry, repository, username=None, password=None):
         return None
 
 
+def refresh_token_on_401(registry, repository, username, password, token_refresh_count, max_token_refresh, context_label):
+    token_refresh_count += 1
+    new_token = get_auth_token(registry, repository, username, password)
+    if new_token:
+        logging.info(f"{context_label} got 401, token refreshed successfully (refresh {token_refresh_count}/{max_token_refresh})")
+        return new_token, token_refresh_count
+    else:
+        logging.warning(f"{context_label} got 401, token refresh failed, retrying with existing token (refresh {token_refresh_count}/{max_token_refresh})")
+        return None, token_refresh_count
+
+
 def get_image_manifest(registry, repository, tag, token, username=None, password=None, max_token_refresh=3):
     """
     Fetch the manifest for a given image tag.
@@ -287,13 +298,10 @@ def get_image_manifest(registry, repository, tag, token, username=None, password
             logging.debug(f"Fetching manifest for {tag}, HTTP {response.status_code}")
 
             if response.status_code == 401 and token_refresh_count < max_token_refresh:
-                token_refresh_count += 1
-                new_token = get_auth_token(registry, repository, username, password)
+                new_token, token_refresh_count = refresh_token_on_401(
+                    registry, repository, username, password, token_refresh_count, max_token_refresh, f"Manifest {tag}")
                 if new_token:
                     current_token = new_token
-                    logging.info(f"Manifest {tag} got 401, token refreshed successfully (refresh {token_refresh_count}/{max_token_refresh})")
-                else:
-                    logging.warning(f"Manifest {tag} got 401, token refresh failed, retrying with existing token (refresh {token_refresh_count}/{max_token_refresh})")
                 continue
 
             response.raise_for_status()
@@ -333,13 +341,10 @@ def fetch_layer_with_retries(registry, repository, digest, token, username=None,
                 logging.debug(f"Fetching layer {digest}, attempt {attempt}, HTTP {r.status_code}")
 
                 if r.status_code == 401 and token_refresh_count < max_token_refresh:
-                    token_refresh_count += 1
-                    new_token = get_auth_token(registry, repository, username, password)
+                    new_token, token_refresh_count = refresh_token_on_401(
+                        registry, repository, username, password, token_refresh_count, max_token_refresh, f"Layer {digest}")
                     if new_token:
                         current_token = new_token
-                        logging.info(f"Layer {digest} got 401, token refreshed successfully (refresh {token_refresh_count}/{max_token_refresh})")
-                    else:
-                        logging.warning(f"Layer {digest} got 401, token refresh failed, retrying with existing token (refresh {token_refresh_count}/{max_token_refresh})")
                     attempt -= 1
                     continue
 
