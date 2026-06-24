@@ -264,15 +264,17 @@ def get_auth_token(registry, repository, username=None, password=None):
         return None
 
 
-def refresh_token_on_401(registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, context_label):
+def handle_token_refresh(status_code, registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, context_label):
+    if status_code != 401 or token_refresh_count >= max_token_refresh:
+        return False, current_token, token_refresh_count
     token_refresh_count += 1
     new_token = get_auth_token(registry, repository, username, password)
     if new_token:
         logging.info(f"{context_label} got 401, token refreshed successfully (refresh {token_refresh_count}/{max_token_refresh})")
-        return new_token, token_refresh_count
+        return True, new_token, token_refresh_count
     else:
         logging.warning(f"{context_label} got 401, token refresh failed, retrying with existing token (refresh {token_refresh_count}/{max_token_refresh})")
-        return current_token, token_refresh_count
+        return True, current_token, token_refresh_count
 
 
 def get_image_manifest(registry, repository, tag, token, username=None, password=None, max_token_refresh=3):
@@ -297,9 +299,9 @@ def get_image_manifest(registry, repository, tag, token, username=None, password
             response = requests.get(manifest_url, headers=headers, verify=False)
             logging.debug(f"Fetching manifest for {tag}, HTTP {response.status_code}")
 
-            if response.status_code == 401 and token_refresh_count < max_token_refresh:
-                current_token, token_refresh_count = refresh_token_on_401(
-                    registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, f"Manifest {tag}")
+            refreshed, current_token, token_refresh_count = handle_token_refresh(
+                response.status_code, registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, f"Manifest {tag}")
+            if refreshed:
                 continue
 
             response.raise_for_status()
@@ -338,9 +340,9 @@ def fetch_layer_with_retries(registry, repository, digest, token, username=None,
             with requests.get(url, headers=headers, stream=True, verify=False) as r:
                 logging.debug(f"Fetching layer {digest}, attempt {attempt}, HTTP {r.status_code}")
 
-                if r.status_code == 401 and token_refresh_count < max_token_refresh:
-                    current_token, token_refresh_count = refresh_token_on_401(
-                        registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, f"Layer {digest}")
+                refreshed, current_token, token_refresh_count = handle_token_refresh(
+                    r.status_code, registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, f"Layer {digest}")
+                if refreshed:
                     attempt -= 1
                     continue
 
