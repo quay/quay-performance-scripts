@@ -277,6 +277,7 @@ def handle_token_refresh(status_code, registry, repository, username, password, 
         return True, current_token, token_refresh_count
 
 
+
 def get_image_manifest(registry, repository, tag, token, username=None, password=None, max_token_refresh=3):
     """
     Fetch the manifest for a given image tag.
@@ -428,6 +429,8 @@ def pull_single_image_http(tag, username=None, password=None, max_failures=3):
         success_count = 1
     end_time = datetime.datetime.utcnow()
     elapsed_time = (end_time - start_time).total_seconds()
+    layers_succeeded = len(digests) - failure_count
+    layers_per_sec = layers_succeeded / elapsed_time if elapsed_time > 0 else 0.0
 
     return {
         'tag': tag,
@@ -438,6 +441,7 @@ def pull_single_image_http(tag, username=None, password=None, max_failures=3):
         'success_count': success_count,
         'failure_count': failure_count,
         'successful': (failure_count == 0),
+        'layers_per_sec': round(layers_per_sec, 2),
     }
 
 
@@ -470,21 +474,40 @@ def podman_pull(tags, concurrency, username=None, password=None):
             if n % 10 == 0:
                 logging.info(f"Pulling {n}/{len(tags)} images completed.")
 
-    # Compute summary
-    if results:
-        elapsed_times = [r['elapsed_time'] for r in results]
+    # Compute summary — duration stats from successful images only
+    successful_results = [r for r in results if r['successful']]
+    failed_count = sum(1 for r in results if not r['successful'])
+
+    if successful_results:
+        elapsed_times = [r['elapsed_time'] for r in successful_results]
+        success_starts = [r['start_time'] for r in successful_results]
+        success_ends = [r['end_time'] for r in successful_results]
+        total_elapsed = (max(success_ends) - min(success_starts)).total_seconds()
+        throughput = len(successful_results) / total_elapsed if total_elapsed > 0 else 0.0
+        total_layers_per_sec = sum(r['layers_per_sec'] for r in successful_results) / len(successful_results)
         summary = {
             'durations': {
                 'mean': mean(elapsed_times),
                 'max': max(elapsed_times),
                 'min': min(elapsed_times),
             },
-            'total': len(results),
-            'successful': sum(1 for r in results if r['successful']),
-            'failed': sum(1 for r in results if not r['successful']),
+            'total_elapsed': total_elapsed,
+            'throughput_img_per_sec': round(throughput, 2),
+            'avg_layers_per_sec': round(total_layers_per_sec, 2),
+            'pulls': {
+                'total': len(results),
+                'successful': len(successful_results),
+                'failed': failed_count,
+            },
         }
     else:
-        summary = {'durations': {}, 'total': 0, 'successful': 0, 'failed': 0}
+        summary = {
+            'durations': {},
+            'total_elapsed': 0.0,
+            'throughput_img_per_sec': 0.0,
+            'avg_layers_per_sec': 0.0,
+            'pulls': {'total': len(results), 'successful': 0, 'failed': failed_count},
+        }
 
     # Write results to local filesystem
     write_results_to_file({'summary': summary, 'results': results},
