@@ -441,7 +441,7 @@ def pull_single_image_http(tag, username=None, password=None, max_failures=3):
         'success_count': success_count,
         'failure_count': failure_count,
         'successful': (failure_count == 0),
-        'layers_per_sec': round(layers_per_sec, 3),
+        'layers_per_sec': round(layers_per_sec, 2),
     }
 
 
@@ -492,8 +492,8 @@ def podman_pull(tags, concurrency, username=None, password=None):
                 'min': min(elapsed_times),
             },
             'total_elapsed': total_elapsed,
-            'throughput_img_per_sec': round(throughput, 5),
-            'avg_layers_per_sec': round(total_layers_per_sec, 3),
+            'throughput_img_per_sec': round(throughput, 2),
+            'avg_layers_per_sec': round(total_layers_per_sec, 2),
             'pulls': {
                 'total': len(results),
                 'successful': len(successful_results),
