@@ -264,51 +264,88 @@ def get_auth_token(registry, repository, username=None, password=None):
         return None
 
 
-def get_image_manifest(registry, repository, tag, token):
+def handle_token_refresh(status_code, registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, context_label):
+    if status_code != 401 or token_refresh_count >= max_token_refresh:
+        return False, current_token, token_refresh_count
+    token_refresh_count += 1
+    new_token = get_auth_token(registry, repository, username, password)
+    if new_token:
+        logging.info(f"{context_label} got 401, token refreshed successfully (refresh {token_refresh_count}/{max_token_refresh})")
+        return True, new_token, token_refresh_count
+    else:
+        logging.warning(f"{context_label} got 401, token refresh failed, retrying with existing token (refresh {token_refresh_count}/{max_token_refresh})")
+        return True, current_token, token_refresh_count
+
+
+def get_image_manifest(registry, repository, tag, token, username=None, password=None, max_token_refresh=3):
     """
     Fetch the manifest for a given image tag.
-    Returns manifest JSON and list of layer digests.
+    On 401 (expired token), refreshes the auth token and retries.
+    Returns (layer_digests, current_token) tuple.
     """
     manifest_url = f"https://{registry}/v2/{repository}/manifests/{tag}"
-    headers = {
-        'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
-    }
-    
-    if token:
-        headers['Authorization'] = f'Bearer {token}'
-    
-    try:
-        response = requests.get(manifest_url, headers=headers, verify=False)
-        logging.debug(f"Fetching manifest for {tag}, HTTP {response.status_code}")
-        response.raise_for_status()
-        manifest = response.json()
-        
-        # Extract layer digests
-        layers = []
-        if 'layers' in manifest:
-            layers = [layer['digest'] for layer in manifest['layers']]
-        elif 'fsLayers' in manifest:  # Older manifest format
-            layers = [layer['blobSum'] for layer in manifest['fsLayers']]
-        
-        return layers
-    except Exception as e:
-        logging.error(f"Failed to get manifest for {tag}: {e}")
-        return []
+    current_token = token
+    token_refresh_count = 0
+
+    while token_refresh_count <= max_token_refresh:
+        headers = {
+            'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
+        }
+
+        if current_token:
+            headers['Authorization'] = f'Bearer {current_token}'
+
+        try:
+            response = requests.get(manifest_url, headers=headers, verify=False)
+            logging.debug(f"Fetching manifest for {tag}, HTTP {response.status_code}")
+
+            refreshed, current_token, token_refresh_count = handle_token_refresh(
+                response.status_code, registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, f"Manifest {tag}")
+            if refreshed:
+                continue
+
+            response.raise_for_status()
+            manifest = response.json()
+
+            layers = []
+            if 'layers' in manifest:
+                layers = [layer['digest'] for layer in manifest['layers']]
+            elif 'fsLayers' in manifest:  # Older manifest format
+                layers = [layer['blobSum'] for layer in manifest['fsLayers']]
+
+            return layers, current_token
+        except Exception as e:
+            logging.error(f"Failed to get manifest for {tag}: {e}")
+            return [], current_token
+
+    return [], current_token
 
 
-def fetch_layer_with_retries(registry, repository, digest, token, max_attempts=3):
+def fetch_layer_with_retries(registry, repository, digest, token, username=None, password=None, max_attempts=3, max_token_refresh=3):
     """
     Attempt to download a single layer up to max_attempts times.
+    On 401 (expired token), refreshes the auth token and retries
+    without consuming a retry attempt.
     Returns True on success, False on permanent failure.
     """
     url = f"https://{registry}/v2/{repository}/blobs/{digest}"
-    headers = {"Authorization": f"Bearer {token}"}
+    current_token = token
+    token_refresh_count = 0
     attempt = 0
+
     while attempt < max_attempts:
         attempt += 1
         try:
+            headers = {"Authorization": f"Bearer {current_token}"}
             with requests.get(url, headers=headers, stream=True, verify=False) as r:
                 logging.debug(f"Fetching layer {digest}, attempt {attempt}, HTTP {r.status_code}")
+
+                refreshed, current_token, token_refresh_count = handle_token_refresh(
+                    r.status_code, registry, repository, username, password, current_token, token_refresh_count, max_token_refresh, f"Layer {digest}")
+                if refreshed:
+                    attempt -= 1
+                    continue
+
                 r.raise_for_status()
                 sha = hashlib.sha256()
                 for chunk in r.iter_content(chunk_size=2 * 1024 * 1024):  # 2MB chunks
@@ -358,7 +395,7 @@ def pull_single_image_http(tag, username=None, password=None, max_failures=3):
             'successful': False,
         }
 
-    digests = get_image_manifest(registry, repository, image_tag, token)
+    digests, token = get_image_manifest(registry, repository, image_tag, token, username, password)
     if not digests:
         end_time = datetime.datetime.utcnow()
         elapsed_time = (end_time - start_time).total_seconds()
@@ -379,7 +416,7 @@ def pull_single_image_http(tag, username=None, password=None, max_failures=3):
     # Submit layer fetch tasks (each task includes its own retry logic)
     with ThreadPoolExecutor(max_workers=6) as layer_pool:
         futures = {
-            layer_pool.submit(fetch_layer_with_retries, registry, repository, d, token, max_failures): d
+            layer_pool.submit(fetch_layer_with_retries, registry, repository, d, token, username, password, max_failures): d
             for d in digests
         }
         for fut in as_completed(futures):
