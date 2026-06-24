@@ -277,6 +277,7 @@ def handle_token_refresh(status_code, registry, repository, username, password, 
         return True, current_token, token_refresh_count
 
 
+
 def get_image_manifest(registry, repository, tag, token, username=None, password=None, max_token_refresh=3):
     """
     Fetch the manifest for a given image tag.
